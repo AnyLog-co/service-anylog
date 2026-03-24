@@ -4,10 +4,26 @@ import ast
 import json
 
 ROOT_DIR =  os.path.dirname(__file__).split("docker-makefiles")[0]
-SAMPLE_FILE = os.path.join(ROOT_DIR, "default-service.definition.json")
-INPUT_DIR = os.path.join(ROOT_DIR, "docker-makefiles", "anylog-generic")
+SERVICE_DEFINITION = os.path.join(ROOT_DIR, "service.definition.json")
+if not os.path.isfile(SERVICE_DEFINITION):
+    raise FileNotFoundError(SERVICE_DEFINITION)
+SERVICE_POLICY     = os.path.join(ROOT_DIR, "service.policy.json")
+if not os.path.isfile(SERVICE_DEFINITION):
+    raise FileNotFoundError(SERVICE_DEFINITION)
+NODE_POLICY        = os.path.join(ROOT_DIR, "node.policy.json")
+if not os.path.isfile(SERVICE_DEFINITION):
+    raise FileNotFoundError(SERVICE_DEFINITION)
+
+INPUT_DIR = os.path.join(ROOT_DIR, "docker-makefiles", "anylog-generic") # <-- user defined input
+if not os.path.isdir(INPUT_DIR):
+    raise NotADirectoryError(INPUT_DIR)
 INPUT_ENV = os.path.join(INPUT_DIR, "node_configs.env")
-OUTPUT_JSON = os.path.join(INPUT_DIR, "node_configs.json")
+if not os.path.isfile(INPUT_ENV):
+    raise FileNotFoundError(INPUT_ENV)
+
+OUTPUT_SERVICE_DEFINITION = os.path.join(INPUT_DIR, "service.definition.json")
+OUTPUT_SERVICE_POLICY     = os.path.join(INPUT_DIR, "service.policy.json")
+OUTPUT_NODE_POLICY        = os.path.join(INPUT_DIR, "node.policy.json")
 
 def read_env():
     configs = []
@@ -47,18 +63,47 @@ def read_env():
 
     return configs
 
-def update_json(configs:list):
-    with open(OUTPUT_JSON, 'r') as f:
+def update_service_definition(configs:list):
+    with open(SERVICE_DEFINITION, 'r') as f:
         file_content = json.load(f)
     file_content["userInput"] = configs
 
-    with open(OUTPUT_JSON, 'w') as f:
+    with open(OUTPUT_SERVICE_DEFINITION, 'w') as f:
         json.dump(file_content, f, indent=2)
 
+def update_service_policy(node_name:str):
+    with open(SERVICE_POLICY, 'r') as f:
+        file_content = json.load(f)
+    file_content["constraints"] = [f"openhorizon.allowPrivileged == true AND purpose == {node_name}"]
+
+    with open(OUTPUT_SERVICE_POLICY, 'w') as f:
+        json.dump(file_content, f, indent=2)
+
+def update_node_policy(node_name: str):
+    with open(NODE_POLICY, 'r') as f:
+        file_content = json.load(f)
+
+
+    if file_content.get("properties") is not None:
+        for index in range(len(file_content["properties"])):
+            if file_content["properties"][index].get("name") == "purpose":
+                file_content["properties"][index]["value"] = node_name
+
+    with open(OUTPUT_NODE_POLICY, 'w') as f:
+        json.dump(file_content, f, indent=2)
+
+
 def main():
-    shutil.copy(SAMPLE_FILE, OUTPUT_JSON)
     configs = read_env()
-    update_json(configs=configs)
+    node_name = "anylog-node"
+    for config in configs:
+        if "NODE_NAME" in list(config.values()):
+            node_name = config.get("value")
+            break
+
+    update_service_definition(configs=configs)
+    update_service_policy(node_name=node_name)
+    update_node_policy(node_name=node_name)
 
 
 if __name__ == "__main__":
