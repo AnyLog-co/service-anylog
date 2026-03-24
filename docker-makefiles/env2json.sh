@@ -23,8 +23,27 @@
 
 set -euo pipefail
 
-INPUT_ENV="${1:-node_configs.env}"
-OUTPUT_JSON="${2:-node_configs.json}"
+INPUT_DIR=${1:-anylog-generic}
+SAMPLE_FILE=${2:-../service.definition.json}
+
+if [[ ! -d "${INPUT_DIR}" ]]; then
+    echo "Unable to find directory ${INPUT_DIR}" >&2
+    exit 1
+elif [[ ! -f "${INPUT_DIR}/node_configs.env" ]]; then
+    echo "Unable to find config file: ${INPUT_DIR}/node_configs.env" >&2
+    exit 1
+else
+    INPUT_ENV="${INPUT_DIR}/node_configs.env"
+    OUTPUT_JSON="${INPUT_DIR}/service.definition.json"
+fi
+
+if [[ ! -f ${SAMPLE_FILE} ]] ; then
+  echo "Missing base config file: ${SAMPLE_FILE}"
+  exit 1
+else
+  cp ${SAMPLE_FILE} ${INPUT_DIR}
+fi
+
 
 # --------------------------------------------------------------------------- #
 # Validation
