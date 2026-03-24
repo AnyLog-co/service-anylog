@@ -49,8 +49,8 @@ export DOCKER_COMPOSE_CMD := $(shell if command -v podman-compose >/dev/null 2>&
 	    elif command -v docker-compose >/dev/null 2>&1; then echo "docker-compose"; else echo "docker compose"; fi)
 export DOCKER_COMPOSE_FILE := docker-makefiles/docker-compose-files/$(ANYLOG_TYPE)-docker-compose.yaml 
 
+#========= prep configs =========
 all: help
-
 check-configs:
 	@if [ "$(IS_MANUAL)" != "true" ] && [ -z "$(ANYLOG_TYPE)" ]; then \
 		echo "ERROR: Missing AnyLog type"; \
@@ -66,14 +66,11 @@ login: ## log into docker hub for AnyLog
 pull: check-configs ## pull image from docker hub
 	$(CONTAINER_CMD) pull docker.io/$(IMAGE):$(TAG)
 
+#========= Docker compose =========
 dry-run: check-configs ## generate docker-compose.yaml
 	@echo "Dry Run ${ANYLOG_TYPE} - ${NODE_NAME}"
 	bash  docker-makefiles/prep_configs.sh $(ANYLOG_TYPE)
 	bash  docker-makefiles/build_docker_compose.sh $(ANYLOG_TYPE) $(TAG)
-
-oh-dry-run: check-configs ## generate service for Open Horizon
-	@echo "Open Horizon Dry Run ${ANYLOG_TYPE} - ${NODE_NAME}"
-	bash ./docker-makefiles/env2json.sh docker-makefiles/$(ANYLOG_TYPE) ./service.definition.json
 
 up: dry-run ## start AnyLog instance
 	@echo "Deploy AnyLog $(ANYLOG_TYPE)"
@@ -104,6 +101,49 @@ attach: check-configs ## attach to container
 exec: check-configs ## attach to bash shell
 	$(CONTAINER_CMD) exec -it $(NODE_NAME) /bin/bash
 
+# ========= Open Horizon commands =========
+prep-service: check-configs ## generate service for Open Horizon
+	@echo "Open Horizon Dry Run ${ANYLOG_TYPE} - ${NODE_NAME}"
+	bash ./docker-makefiles/env2json.sh docker-makefiles/$(ANYLOG_TYPE) ./service.definition.json
+full-deploy: publish-service publish-service-policy publish-deployment-policy agent-run ## deploy all services and policies, then start agent
+deploy: publish-deployment-policy agent-run ## publish deployment and run agent
+publish: publish-service publish-service-policy publish-deployment-policy ## publish services and policies
+publish-version: publish-service publish-service-policy ## update version
+publish-service: ## publish service
+	@echo "=================="
+	@echo "PUBLISHING SERVICE"
+	@echo "=================="
+	@hzn exchange service publish --org=${HZN_ORG_ID} --user-pw=${HZN_EXCHANGE_USER_AUTH} -O -P --json-file=service.definition.json
+publish-service-policy: ## public service policy
+	@echo "========================="
+	@echo "PUBLISHING SERVICE POLICY"
+	@echo "========================="
+	@hzn exchange service addpolicy --org=${HZN_ORG_ID} --user-pw=${HZN_EXCHANGE_USER_AUTH} -f service.policy.json $(HZN_ORG_ID)/$(SERVICE_NAME)_$(SERVICE_VERSION)_$(ARCH)
+publish-deployment-policy: prep-service ## publish deployment policy
+	@echo "============================"
+	@echo "PUBLISHING DEPLOYMENT POLICY"
+	@echo "============================"
+	@hzn exchange deployment addpolicy --org=$(HZN_ORG_ID) --user-pw=$(HZN_EXCHANGE_USER_AUTH) -f service.deployment.json $(HZN_ORG_ID)/policy-$(SERVICE_NAME)_$(SERVICE_VERSION)
+agent-run: ## start agent
+	@echo "================"
+	@echo "REGISTERING NODE"
+	@echo "================"
+	@hzn register --name=hzn-client --policy=node.policy.json
+	@watch $(MAKE) hzn-agreement-list
+hzn-clean: ## unregister agent(s) from OpenHorizon
+	@echo "==================="
+	@echo "UN-REGISTERING NODE"
+	@echo "==================="
+	@hzn unregister -f
+	@echo ""
+hzn-agreement-list: ## check agreement list
+	@hzn agreement list
+hzn-logs: ## logs for Docker container when running in OpenHorizon
+	@$(CONTAINER_CMD) logs $(CONTAINER_ID)
+deploy-check: ## check deployment
+	@hzn deploycheck all -t device -B service.deployment.json --service=service.definition.json --service-pol=service.policy.json --node-pol=node.policy.json
+
+#========= validate & help =========
 check-vars: ## Show all environment variables
 	@echo "IS_MANUAL             Default: false              Value: $(IS_MANUAL)"
 	@echo "ANYLOG_TYPE           Default: generic            Value: $(ANYLOG_TYPE)"

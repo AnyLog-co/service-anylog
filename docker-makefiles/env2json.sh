@@ -5,7 +5,7 @@
 # Converts a .env file into a JSON file, mirroring the Python implementation.
 # Reads node_configs.env, pairs each KEY=VALUE with its preceding comment
 # block, type-casts values, and injects the result into the `userInput` field
-# of a copied service.definition.json.
+# of a copied default-service.definition.json.
 #
 # Type casting rules (mirrors ast.literal_eval):
 #   - Pure integer or float  → JSON number,  type "int"
@@ -19,7 +19,7 @@
 #
 # Defaults:
 #   INPUT_DIR   = anylog-generic
-#   SAMPLE_FILE = ../service.definition.json
+#   SAMPLE_FILE = ../default-service.definition.json
 #
 # Output: INPUT_DIR/node_configs.json
 # =============================================================================
@@ -27,7 +27,7 @@
 set -euo pipefail
 
 INPUT_DIR="${1:-anylog-generic}"
-SAMPLE_FILE="${2:-../service.definition.json}"
+SAMPLE_FILE="${2:-../default-service.definition.json}"
 
 # --------------------------------------------------------------------------- #
 # Validation
@@ -161,6 +161,7 @@ user_input_json="$(cat "$ACCUM")"
 tmp_out="$(mktemp)"
 jq --argjson ui "$user_input_json" '.userInput = $ui' "$OUTPUT_JSON" > "$tmp_out"
 mv "$tmp_out" "$OUTPUT_JSON"
+cp -r "${OUTPUT_JSON}" ../service.definition.json
 rm -f "$ACCUM"
 
 echo "✓  Converted '${INPUT_ENV}'  →  '${OUTPUT_JSON}'"

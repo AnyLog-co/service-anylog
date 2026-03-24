@@ -4,7 +4,7 @@ import ast
 import json
 
 ROOT_DIR =  os.path.dirname(__file__).split("docker-makefiles")[0]
-SAMPLE_FILE = os.path.join(ROOT_DIR, "service.definition.json")
+SAMPLE_FILE = os.path.join(ROOT_DIR, "default-service.definition.json")
 INPUT_DIR = os.path.join(ROOT_DIR, "docker-makefiles", "anylog-generic")
 INPUT_ENV = os.path.join(INPUT_DIR, "node_configs.env")
 OUTPUT_JSON = os.path.join(INPUT_DIR, "node_configs.json")
