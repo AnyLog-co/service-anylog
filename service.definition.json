@@ -1,174 +1,90 @@
 {
-	"org": "$HZN_ORG_ID",
-	"label": "$SERVICE_NAME for $ARCH",
-	"description": "A service to deploy EdgeLake with Open Horizon",
-	"documentation": "https://edgelake.github.io/",
-	"url": "$SERVICE_NAME",
-	"version": "$SERVICE_VERSION",
-	"arch": "$ARCH",
-	"public": true,
-	"sharable": "singleton",
-	"requiredServices": [],
-	"userInput": [
-		{
-			"name": "ANYLOG_PATH",
-			"label": "AnyLog dir path",
-			"type": "string",
-			"defaultValue": "/app"
-		},
-		{
-			"name": "INIT_TYPE",
-			"label": "Whether to deploy AnyLog or shell as a docker container",
-			"type": "string",
-			"defaultValue": "prod"
-		},
-		{
-			"name": "DISABLE_CLI",
-			"label": "Disable CLI",
-			"type": "bool",
-			"defaultValue": "false"
-		},
+  "org": "$HZN_ORG_ID",
+  "label": "$SERVICE_NAME for $ARCH",
+  "description": "A service to deploy EdgeLake with Open Horizon",
+  "documentation": "https://edgelake.github.io/",
+  "url": "$SERVICE_NAME",
+  "version": "$SERVICE_VERSION",
+  "arch": "$ARCH",
+  "public": true,
+  "sharable": "singleton",
+  "requiredServices": [],
+  "userInput": [
+    {
+      "name": "INIT_TYPE",
+      "label": "Basic deployment settings Container image, deployment type -> prod: run AnyLog instance -> bash: run shell interface with AnyLog installed and params set",
+      "type": "string",
+      "value": "prod"
+    },
+    {
+      "name": "IMAGE",
+      "label": "AnyLog image",
+      "type": "string",
+      "value": "anylogco/anylog-network"
+    },
+    {
+      "name": "DEPLOYMENTS_REPO",
+      "label": "Github repo to use for configuring / deploying node",
+      "type": "string",
+      "value": "https://github.com/AnyLog-co/deployment-scripts"
+    },
+    {
+      "name": "DEPLOYMENTS_BRANCH",
+      "label": "Branch associated with git repo",
+      "type": "string",
+      "value": "pre-develop"
+    },
+    {
+      "name": "NODE_TYPE",
+      "label": "Core node configuration - required for all deployments Configuration based deploymnet node deployment type Node Types:   generic: sandbox with only network configured   master: \"blockchain\" emulator   operator: agent dedicated to storing data   query: agent dedicated to querying data (enable system_query logical database)   publisher: agent used to distribute data   master-operator: a combination of master and operator on a single agent   master-publisher: a combination of master and publisher on a single agent",
+      "type": "string",
+      "value": "generic"
+    },
+    {
+      "name": "NODE_NAME",
+      "label": "Name of the AnyLog instance",
+      "type": "string",
+      "value": "anylog-node"
+    },
+    {
+      "name": "COMPANY_NAME",
+      "label": "Owner of the AnyLog instance",
+      "type": "string",
+      "value": "AnyLog Co."
+    },
+    {
+      "name": "ANYLOG_SERVER_PORT",
+      "label": "Port address used by AnyLog's TCP protocol to communicate with other nodes in the network",
+      "type": "int",
+      "value": 32548
+    },
+    {
+      "name": "ANYLOG_REST_PORT",
+      "label": "Port address used by AnyLog's REST protocol",
+      "type": "int",
+      "value": 32549
+    },
+    {
+      "name": "ANYLOG_BROKER_PORT",
+      "label": "Port value to be used as an MQTT broker, or some other third-party broker",
+      "type": "int",
+      "value": 32550
+    },
 
-		{
-			"name": "NODE_TYPE",
-			"label": "Information regarding which AnyLog node configurations to enable. By default, even if everything is disabled, AnyLog starts TCP and REST connection protocols",
-			"type": "string",
-			"defaultValue": "generic"
-		},
-		{
-			"name": "NODE_NAME",
-			"label": "Name of the AnyLog instance",
-			"type": "string",
-			"defaultValue": "anylog-node"
-		},
-		{
-			"name": "COMPANY_NAME",
-			"label": "Owner of the AnyLog instance",
-			"type": "string",
-			"defaultValue": "New Company"
-		},
-		{
-			"name": "ANYLOG_SERVER_PORT",
-			"label": "Port address used by AnyLog's TCP protocol to communicate with other nodes in the network",
-			"type": "int",
-			"defaultValue": "32548"
-		},
-		{
-			"name": "ANYLOG_REST_PORT",
-			"label": "Port address used by AnyLog's REST protocol",
-			"type": "int",
-			"defaultValue": "32549"
-		},
-
-		{
-			"name": "TCP_BIND",
-			"label": "A bool value that determines if to bind to a specific IP and Port (a false value binds to all IPs)",
-			"type": "bool",
-			"defaultValue": "false"
-		},
-		{
-			"name": "REST_BIND",
-			"label": "A bool value that determines if to bind to a specific IP and Port (a false value binds to all IPs)",
-			"type": "bool",
-			"defaultValue": "false"
-		},
-		{
-			"name": "BROKER_BIND",
-			"label": "A bool value that determines if to bind to a specific IP and Port (a false value binds to all IPs)",
-			"type": "bool",
-			"defaultValue": "false"
-		},
-
-		{
-			"name": "LEDGER_CONN",
-			"label": "TCP connection information for Master Node",
-			"type": "string",
-			"defaultValue": "127.0.0.1:32048"
-		},
-
-		{
-			"name": "DB_TYPE",
-			"label": "Physical database type (sqlite or psql)",
-			"type": "string",
-			"defaultValue": "sqlite"
-		},
-		{
-			"name": "DB_USER",
-			"label": "Physical database type (sqlite or psql)",
-			"type": "string",
-			"defaultValue": "admin"
-		},
-		{
-			"name": "DB_IP",
-			"label": "Database IP address",
-			"type": "string",
-			"defaultValue": "127.0.0.1"
-		},
-		{
-			"name": "DB_PORT",
-			"label": "Database port number",
-			"type": "int",
-			"defaultValue": "5432"
-		},
-		{
-			"name": "SYSTEM_QUERY",
-			"label": "Whether to start to start system_query logical database",
-			"type": "string",
-			"defaultValue": "false"
-		},
-		{
-			"name": "MEMORY",
-			"label": "Run system_query using in-memory SQLite. If set to false, will use pre-set database type",
-			"type": "string",
-			"defaultValue": "true"
-		},
-
-		{
-			"name": "CLUSTER_NAME",
-			"label": "Owner of the cluster",
-			"type": "string",
-			"defaultValue": "new-company-cluster"
-		},
-		{
-			"name": "DEFAULT_DBMS",
-			"label": "Owner of the cluster",
-			"type": "string",
-			"defaultValue": "new_company"
-		},
-
-		{
-			"name": "ENABLE_MQTT",
-			"label": "Whether to enable the default MQTT process",
-			"type": "bool",
-			"defaultValue": "false"
-		},
-		{
-			"name": "DEPLOY_LOCAL_SCRIPT",
-			"label": "Whether to automatically run a local (or personalized) script at the end of the process",
-			"type": "bool",
-			"defaultValue": "false"
-		},
-		{
-			"name": "MONITOR_NODES",
-			"label": "Whether to monitor the node",
-			"type": "bool",
-			"defaultValue": "false"
-		}
-
-	],
-	"deployment": {
-		"services": {
-			"$SERVICE_NAME": {
-				"image": "$DOCKER_IMAGE_BASE:$DOCKER_IMAGE_VERSION",
-				"network": "host",
-				"privileged": true,
-				"binds": [
-					"edgelake-operator-anylog:/app/EdgeLake/anylog",
-					"edgelake-operator-blockchain:/app/EdgeLake/blockchain",
-					"edgelake-operator-data:/app/EdgeLake/data",
-					"edgelake-operator-local-scripts:/app/deployment-scripts"
-				]
-			}
-		}
-	}
+  ],
+  "deployment": {
+    "services": {
+      "$SERVICE_NAME": {
+        "image": "$DOCKER_IMAGE_BASE:$DOCKER_IMAGE_VERSION",
+        "network": "host",
+        "privileged": true,
+        "binds": [
+          "edgelake-operator-anylog:/app/EdgeLake/anylog",
+          "edgelake-operator-blockchain:/app/EdgeLake/blockchain",
+          "edgelake-operator-data:/app/EdgeLake/data",
+          "edgelake-operator-local-scripts:/app/deployment-scripts"
+        ]
+      }
+    }
+  }
 }

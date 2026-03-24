@@ -71,6 +71,10 @@ dry-run: check-configs ## generate docker-compose.yaml
 	bash  docker-makefiles/prep_configs.sh $(ANYLOG_TYPE)
 	bash  docker-makefiles/build_docker_compose.sh $(ANYLOG_TYPE) $(TAG)
 
+oh-dry-run: check-configs ## generate service for Open Horizon
+	@echo "Open Horizon Dry Run ${ANYLOG_TYPE} - ${NODE_NAME}"
+	bash ./docker-makefiles/env2json.sh docker-makefiles/$(ANYLOG_TYPE) ./service.definition.json
+
 up: dry-run ## start AnyLog instance
 	@echo "Deploy AnyLog $(ANYLOG_TYPE)"
 	$(DOCKER_COMPOSE_CMD) -f $(DOCKER_COMPOSE_FILE) up -d
