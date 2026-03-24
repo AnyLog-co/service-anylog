@@ -1,5 +1,4 @@
 import os
-import shutil
 import ast
 import json
 
@@ -8,11 +7,11 @@ SERVICE_DEFINITION = os.path.join(ROOT_DIR, "service.definition.json")
 if not os.path.isfile(SERVICE_DEFINITION):
     raise FileNotFoundError(SERVICE_DEFINITION)
 SERVICE_POLICY     = os.path.join(ROOT_DIR, "service.policy.json")
-if not os.path.isfile(SERVICE_DEFINITION):
-    raise FileNotFoundError(SERVICE_DEFINITION)
+if not os.path.isfile(SERVICE_POLICY):
+    raise FileNotFoundError(SERVICE_POLICY)
 NODE_POLICY        = os.path.join(ROOT_DIR, "node.policy.json")
-if not os.path.isfile(SERVICE_DEFINITION):
-    raise FileNotFoundError(SERVICE_DEFINITION)
+if not os.path.isfile(NODE_POLICY):
+    raise FileNotFoundError(NODE_POLICY)
 
 INPUT_DIR = os.path.join(ROOT_DIR, "docker-makefiles", "anylog-generic") # <-- user defined input
 if not os.path.isdir(INPUT_DIR):
