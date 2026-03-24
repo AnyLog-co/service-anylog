@@ -1,49 +1,61 @@
 #!/usr/bin/env bash
 # =============================================================================
-# env_to_json.sh
+# env2json.sh
 #
-# Converts a .env file into a JSON file, mirroring the Python implementation.
-# Reads node_configs.env, pairs each KEY=VALUE with its preceding comment
-# block, type-casts values, and injects the result into the `userInput` field
-# of a copied service.definition.json.
+# Converts a .env file into JSON config files, mirroring the Python
+# implementation (env2json.py).
+#
+# Reads:
+#   INPUT_DIR/node_configs.env
+#   ROOT_DIR/service.definition.json
+#   ROOT_DIR/service.policy.json
+#   ROOT_DIR/node.policy.json
+#
+# Writes:
+#   INPUT_DIR/service.definition.json  — userInput replaced with parsed .env
+#   INPUT_DIR/service.policy.json      — constraints set to node_name
+#   INPUT_DIR/node.policy.json         — purpose property set to node_name
 #
 # Type casting rules (mirrors ast.literal_eval):
-#   - Pure integer or float  → JSON number,  type "int"
-#   - Everything else        → JSON string,  type "string"
-#   - true/false stay as     → type "string" (Python needs True/False)
+#   - Pure integer or float → JSON number, type "int"
+#   - Everything else       → JSON string, type "string"
+#   - true/false stay as    → type "string" (Python needs True/False)
 #
 # Requires: jq
 #
 # Usage:
-#   ./env_to_json.sh [INPUT_DIR] [SAMPLE_FILE]
+#   ./env2json.sh [INPUT_DIR] [ROOT_DIR]
 #
 # Defaults:
-#   INPUT_DIR   = anylog-generic
-#   SAMPLE_FILE = ../service.definition.json
-#
-# Output: INPUT_DIR/node_configs.json
+#   INPUT_DIR = anylog-generic
+#   ROOT_DIR  = ./
 # =============================================================================
 
 set -euo pipefail
 
 INPUT_DIR="${1:-anylog-generic}"
-SAMPLE_FILE="${2:-../default-service.definition.json}"
+ROOT_DIR="${2:-.}"
 
 # --------------------------------------------------------------------------- #
 # Validation
 # --------------------------------------------------------------------------- #
 if [[ ! -d "${INPUT_DIR}" ]]; then
-    echo "Unable to find directory ${INPUT_DIR}" >&2
+    echo "Unable to find directory: ${INPUT_DIR}" >&2
     exit 1
 elif [[ ! -f "${INPUT_DIR}/node_configs.env" ]]; then
     echo "Unable to find config file: ${INPUT_DIR}/node_configs.env" >&2
     exit 1
 fi
 
-if [[ ! -f "${SAMPLE_FILE}" ]]; then
-    echo "Missing base config file: ${SAMPLE_FILE}" >&2
-    exit 1
-fi
+for src_file in \
+    "${ROOT_DIR}/service.definition.json" \
+    "${ROOT_DIR}/service.policy.json" \
+    "${ROOT_DIR}/node.policy.json"; do
+    if [[ ! -f "${src_file}" ]]; then
+        echo "Missing base config file: ${src_file}" >&2
+        exit 1
+    fi
+done
 
 if ! command -v jq &>/dev/null; then
     echo "ERROR: jq is required but not installed." >&2
@@ -51,20 +63,12 @@ if ! command -v jq &>/dev/null; then
 fi
 
 INPUT_ENV="${INPUT_DIR}/node_configs.env"
-OUTPUT_JSON="${INPUT_DIR}/node_configs.json"
-
-# Copy the sample service definition — userInput will be replaced below
-cp "${SAMPLE_FILE}" "${OUTPUT_JSON}"
+OUTPUT_SERVICE_DEFINITION="${INPUT_DIR}/service.definition.json"
+OUTPUT_SERVICE_POLICY="${INPUT_DIR}/service.policy.json"
+OUTPUT_NODE_POLICY="${INPUT_DIR}/node.policy.json"
 
 # --------------------------------------------------------------------------- #
 # Helper – emit one userInput entry into the accumulator file
-#
-# Arguments:
-#   $1  param      – KEY name
-#   $2  comment    – accumulated comment string (# chars already stripped,
-#                    lines joined — mirrors comment.replace('#','').replace('\n',' ').strip())
-#   $3  raw_value  – raw value string from the .env line
-#   $4  accum_file – path to the JSON array accumulator file
 # --------------------------------------------------------------------------- #
 emit_entry() {
     local param="$1"
@@ -72,26 +76,23 @@ emit_entry() {
     local raw_value="$3"
     local accum_file="$4"
 
-    # --- Clean value: strip surrounding double-quotes, then trim whitespace ---
+    # Strip surrounding double-quotes, then trim whitespace
     local value="$raw_value"
     if [[ ${#value} -ge 2 && "${value:0:1}" == '"' && "${value: -1}" == '"' ]]; then
         value="${value:1:${#value}-2}"
     fi
     value="$(printf '%s' "$value" | sed 's/^[[:space:]]*//;s/[[:space:]]*$//')"
 
-    # --- Build label: remove '#' chars, trim leading/trailing whitespace ------
-    # comment lines were already stripped individually; we just clean '#' and
-    # trim the final result (mirrors .replace('#','').replace('\n',' ').strip())
+    # Build label: remove '#' chars and trim (mirrors .replace('#','').replace('\n',' ').strip())
     local label
     label="$(printf '%s' "$comment" | sed 's/#//g' | sed 's/^[[:space:]]*//;s/[[:space:]]*$//')"
 
-    # --- Type-cast (mirrors ast.literal_eval) ---------------------------------
+    # Type-cast (mirrors ast.literal_eval)
     local vtype="string"
     if [[ "$value" =~ ^-?[0-9]+$ ]] || [[ "$value" =~ ^-?[0-9]*\.[0-9]+$ ]]; then
         vtype="int"
     fi
 
-    # --- Append to the JSON array using jq ------------------------------------
     local tmp
     tmp="$(mktemp)"
 
@@ -115,7 +116,7 @@ emit_entry() {
 }
 
 # --------------------------------------------------------------------------- #
-# Parse .env → build userInput array
+# Parse .env → build userInput array, capture NODE_NAME
 # --------------------------------------------------------------------------- #
 ACCUM="$(mktemp)"
 echo "[]" > "$ACCUM"
@@ -123,6 +124,7 @@ echo "[]" > "$ACCUM"
 comment=""
 param=""
 value=""
+node_name="anylog-node"
 
 while IFS= read -r line || [[ -n "$line" ]]; do
 
@@ -132,9 +134,8 @@ while IFS= read -r line || [[ -n "$line" ]]; do
     # Process non-empty lines only (mirrors `if line.strip():`)
     if [[ -n "${line// /}" ]]; then
         if [[ "$line" == \#===* || "$line" == \#---* ]]; then
-            : # section headers / sub-headers — skip entirely
+            : # section / sub-section headers — skip entirely
         elif [[ "$line" == \#* ]]; then
-            # strip each comment line before accumulating (mirrors line.strip())
             local_stripped="$(printf '%s' "$line" | sed 's/^[[:space:]]*//;s/[[:space:]]*$//')"
             comment+="${local_stripped}"
         elif [[ "$line" == *=* ]]; then
@@ -144,8 +145,18 @@ while IFS= read -r line || [[ -n "$line" ]]; do
     fi
 
     # Emit when all three accumulators are populated
-    # (mirrors the unconditional `if comment and param and value:` check)
     if [[ -n "$comment" && -n "$param" && -n "$value" ]]; then
+        # Capture NODE_NAME (mirrors the loop that finds NODE_NAME in configs)
+        if [[ "$param" == "NODE_NAME" ]]; then
+            raw="${value%$'\r'}"
+            raw="$(printf '%s' "$raw" | sed 's/^[[:space:]]*//;s/[[:space:]]*$//')"
+            # strip surrounding quotes if present
+            if [[ ${#raw} -ge 2 && "${raw:0:1}" == '"' && "${raw: -1}" == '"' ]]; then
+                raw="${raw:1:${#raw}-2}"
+            fi
+            [[ -n "$raw" ]] && node_name="$raw"
+        fi
+
         emit_entry "$param" "$comment" "$value" "$ACCUM"
         comment=""
         param=""
@@ -155,13 +166,43 @@ while IFS= read -r line || [[ -n "$line" ]]; do
 done < "$INPUT_ENV"
 
 # --------------------------------------------------------------------------- #
-# Inject the userInput array into the output JSON
+# 1. Update service.definition.json — inject userInput
 # --------------------------------------------------------------------------- #
 user_input_json="$(cat "$ACCUM")"
-tmp_out="$(mktemp)"
-jq --argjson ui "$user_input_json" '.userInput = $ui' "$OUTPUT_JSON" > "$tmp_out"
-mv "$tmp_out" "$OUTPUT_JSON"
-cp -r "${OUTPUT_JSON}" ../service.definition.json
 rm -f "$ACCUM"
 
-echo "✓  Converted '${INPUT_ENV}'  →  '${OUTPUT_JSON}'"
+tmp="$(mktemp)"
+jq --argjson ui "$user_input_json" '.userInput = $ui' \
+    "${ROOT_DIR}/service.definition.json" > "$tmp"
+mv "$tmp" "$OUTPUT_SERVICE_DEFINITION"
+echo "✓  service.definition.json → '${OUTPUT_SERVICE_DEFINITION}'"
+
+# --------------------------------------------------------------------------- #
+# 2. Update service.policy.json — set constraints
+#    mirrors: ["openhorizon.allowPrivileged == true AND purpose == {node_name}"]
+# --------------------------------------------------------------------------- #
+tmp="$(mktemp)"
+jq --arg node_name "$node_name" \
+   '.constraints = ["openhorizon.allowPrivileged == true AND purpose == \($node_name)"]' \
+   "${ROOT_DIR}/service.policy.json" > "$tmp"
+mv "$tmp" "$OUTPUT_SERVICE_POLICY"
+echo "✓  service.policy.json     → '${OUTPUT_SERVICE_POLICY}'"
+
+# --------------------------------------------------------------------------- #
+# 3. Update node.policy.json — set purpose property value
+#    mirrors: find properties[] where name=="purpose", set value=node_name
+# --------------------------------------------------------------------------- #
+tmp="$(mktemp)"
+jq --arg node_name "$node_name" '
+    if .properties != null then
+        .properties = [
+            .properties[] |
+            if .name == "purpose" then .value = $node_name
+            else .
+            end
+        ]
+    else .
+    end' \
+    "${ROOT_DIR}/node.policy.json" > "$tmp"
+mv "$tmp" "$OUTPUT_NODE_POLICY"
+echo "✓  node.policy.json        → '${OUTPUT_NODE_POLICY}'"
