@@ -12,7 +12,7 @@
 #   ROOT_DIR/node.policy.json
 #
 # Writes:
-#   INPUT_DIR/service.definition.json  — userInput replaced with parsed .env
+#   INPUT_DIR/service.definition.json  — userInput replaced, image tag set
 #   INPUT_DIR/service.policy.json      — constraints set to node_name
 #   INPUT_DIR/node.policy.json         — purpose property set to node_name
 #
@@ -24,17 +24,19 @@
 # Requires: jq
 #
 # Usage:
-#   ./env2json.sh [INPUT_DIR] [ROOT_DIR]
+#   ./env2json.sh [INPUT_DIR] [ROOT_DIR] [TAG]
 #
 # Defaults:
 #   INPUT_DIR = anylog-generic
 #   ROOT_DIR  = ./
+#   TAG       = pre-develop
 # =============================================================================
 
 set -euo pipefail
 
 INPUT_DIR="${1:-anylog-generic}"
 ROOT_DIR="${2:-.}"
+TAG="${3:-pre-develop}"  # <-- user input
 
 # --------------------------------------------------------------------------- #
 # Validation
@@ -83,7 +85,8 @@ emit_entry() {
     fi
     value="$(printf '%s' "$value" | sed 's/^[[:space:]]*//;s/[[:space:]]*$//')"
 
-    # Build label: remove '#' chars and trim (mirrors .replace('#','').replace('\n',' ').strip())
+    # Build label: remove '#' chars and trim
+    # (mirrors .replace('#','').replace('\n',' ').strip())
     local label
     label="$(printf '%s' "$comment" | sed 's/#//g' | sed 's/^[[:space:]]*//;s/[[:space:]]*$//')"
 
@@ -116,7 +119,9 @@ emit_entry() {
 }
 
 # --------------------------------------------------------------------------- #
-# Parse .env → build userInput array, capture NODE_NAME
+# Parse .env → build userInput array, capture NODE_NAME and IMAGE
+# node_name / image start unset — defaults applied after the loop
+# (mirrors: node_name = None / image = None with post-loop fallbacks)
 # --------------------------------------------------------------------------- #
 ACCUM="$(mktemp)"
 echo "[]" > "$ACCUM"
@@ -124,7 +129,8 @@ echo "[]" > "$ACCUM"
 comment=""
 param=""
 value=""
-node_name="anylog-node"
+node_name=""
+image=""
 
 while IFS= read -r line || [[ -n "$line" ]]; do
 
@@ -136,6 +142,7 @@ while IFS= read -r line || [[ -n "$line" ]]; do
         if [[ "$line" == \#===* || "$line" == \#---* ]]; then
             : # section / sub-section headers — skip entirely
         elif [[ "$line" == \#* ]]; then
+            # strip each comment line before accumulating (mirrors line.strip())
             local_stripped="$(printf '%s' "$line" | sed 's/^[[:space:]]*//;s/[[:space:]]*$//')"
             comment+="${local_stripped}"
         elif [[ "$line" == *=* ]]; then
@@ -146,15 +153,23 @@ while IFS= read -r line || [[ -n "$line" ]]; do
 
     # Emit when all three accumulators are populated
     if [[ -n "$comment" && -n "$param" && -n "$value" ]]; then
-        # Capture NODE_NAME (mirrors the loop that finds NODE_NAME in configs)
-        if [[ "$param" == "NODE_NAME" ]]; then
+
+        # Capture NODE_NAME and IMAGE
+        # (mirrors: "NODE_NAME"/"IMAGE" in list(config.values()) — matches on the name field)
+        if [[ "$param" == "NODE_NAME" && -z "$node_name" ]]; then
             raw="${value%$'\r'}"
             raw="$(printf '%s' "$raw" | sed 's/^[[:space:]]*//;s/[[:space:]]*$//')"
-            # strip surrounding quotes if present
             if [[ ${#raw} -ge 2 && "${raw:0:1}" == '"' && "${raw: -1}" == '"' ]]; then
                 raw="${raw:1:${#raw}-2}"
             fi
             [[ -n "$raw" ]] && node_name="$raw"
+        elif [[ "$param" == "IMAGE" && -z "$image" ]]; then
+            raw="${value%$'\r'}"
+            raw="$(printf '%s' "$raw" | sed 's/^[[:space:]]*//;s/[[:space:]]*$//')"
+            if [[ ${#raw} -ge 2 && "${raw:0:1}" == '"' && "${raw: -1}" == '"' ]]; then
+                raw="${raw:1:${#raw}-2}"
+            fi
+            [[ -n "$raw" ]] && image="$raw"
         fi
 
         emit_entry "$param" "$comment" "$value" "$ACCUM"
@@ -165,15 +180,22 @@ while IFS= read -r line || [[ -n "$line" ]]; do
 
 done < "$INPUT_ENV"
 
+# Apply fallbacks if not found in .env (mirrors post-loop `if not image / if not node_name`)
+[[ -z "$image"     ]] && image="anylogco/anylog-network"
+[[ -z "$node_name" ]] && node_name="anylog-node"
+
 # --------------------------------------------------------------------------- #
-# 1. Update service.definition.json — inject userInput
+# 1. Update service.definition.json — inject userInput and set image
+#    mirrors: file_content["deployment"]["services"]["$SERVICE_NAME"]["image"] = f"{image}:{TAG}"
 # --------------------------------------------------------------------------- #
 user_input_json="$(cat "$ACCUM")"
 rm -f "$ACCUM"
 
 tmp="$(mktemp)"
-jq --argjson ui "$user_input_json" '.userInput = $ui' \
-    "${ROOT_DIR}/service.definition.json" > "$tmp"
+jq --argjson ui "$user_input_json" \
+   --arg image "${image}:${TAG}" \
+   '.userInput = $ui | .deployment.services["$SERVICE_NAME"].image = $image' \
+   "${ROOT_DIR}/service.definition.json" > "$tmp"
 mv "$tmp" "$OUTPUT_SERVICE_DEFINITION"
 echo "✓  service.definition.json → '${OUTPUT_SERVICE_DEFINITION}'"
 

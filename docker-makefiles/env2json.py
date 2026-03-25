@@ -2,6 +2,7 @@ import os
 import ast
 import json
 
+TAG = "pre-develop" # <-- user input
 ROOT_DIR =  os.path.dirname(__file__).split("docker-makefiles")[0]
 SERVICE_DEFINITION = os.path.join(ROOT_DIR, "service.definition.json")
 if not os.path.isfile(SERVICE_DEFINITION):
@@ -62,10 +63,12 @@ def read_env():
 
     return configs
 
-def update_service_definition(configs:list):
+def update_service_definition(configs:list, image:str):
     with open(SERVICE_DEFINITION, 'r') as f:
         file_content = json.load(f)
+
     file_content["userInput"] = configs
+    file_content["deployment"]["services"]["$SERVICE_NAME"]["image"] = f"{image}:{TAG}"
 
     with open(OUTPUT_SERVICE_DEFINITION, 'w') as f:
         json.dump(file_content, f, indent=2)
@@ -94,13 +97,21 @@ def update_node_policy(node_name: str):
 
 def main():
     configs = read_env()
-    node_name = "anylog-node"
+    node_name = None
+    image = None
     for config in configs:
         if "NODE_NAME" in list(config.values()):
             node_name = config.get("value")
+        elif "IMAGE" in list(config.values()):
+            image = config.get("value")
+        if node_name and image:
             break
+    if not image:
+        image = "anylogco/anylog-network"
+    if not node_name:
+        node_name = "anylog-node"
 
-    update_service_definition(configs=configs)
+    update_service_definition(configs=configs, image=image)
     update_service_policy(node_name=node_name)
     update_node_policy(node_name=node_name)
 
