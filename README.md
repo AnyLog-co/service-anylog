@@ -17,22 +17,20 @@ Adding AnyLog to Open Horizon deployments extends OH value by:
 
 ## Architecture
 
-In a typical Open Horizon deployment:
+In a typical Open Horizon deployment here are the main elements: 
+<img width="1118" alt="image" src="https://github.com/user-attachments/assets/7e1d9264-2ace-4450-ab5a-f1c97f5e7211">
 
-<img width="1118" alt="image" src="imgs/oh_typical_deployment.png">
 
 The simplest pattern for adding AnyLog is to co-locate the Master and Query nodes with the OH Management Hub:
-
 <img width="1149" alt="image" src="imgs/oh_with_anylog_central.png">
 
 A more practical approach puts the Query node(s) elsewhere, avoiding moving data to the Management Hub (peer-to-peer
 collection). Multiple Query nodes are supported:
-
-<img width="1159" alt="image" src="imgs/oh_with_anylog_distributed.png">
+<img width="1159" alt="image" src="https://github.com/user-attachments/assets/d9ff937f-09fb-4309-96f2-f11241aaea21">
 
 For demonstrating and testing on a single physical system:
+<img width="1159" alt="image" src="https://github.com/user-attachments/assets/761645ad-3af5-49e2-bdf0-c6a3b6f21815">
 
-<img width="1159" alt="image" src="imgs/oh_single_system.png">
 
 ---
 
