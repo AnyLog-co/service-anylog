@@ -1,0 +1,59 @@
+{
+  "org": "$HZN_ORG_ID",
+  "label": "$SERVICE_NAME for $ARCH",
+  "description": "A service to deploy EdgeLake with Open Horizon",
+  "documentation": "https://edgelake.github.io/",
+  "url": "$SERVICE_NAME",
+  "version": "$SERVICE_VERSION",
+  "arch": "$ARCH",
+  "public": true,
+  "sharable": "singleton",
+  "requiredServices": [],
+  "userInput": [
+    {
+      "name": "NODE_TYPE",
+      "label": "AnyLog node type (generic, master, operator, query, publisher)",
+      "type": "string",
+      "defaultValue": "generic"
+    },
+    {
+      "name": "NODE_NAME",
+      "label": "Name of the AnyLog instance",
+      "type": "string",
+      "defaultValue": "anylog-node"
+    },
+    {
+      "name": "COMPANY_NAME",
+      "label": "Owner of the AnyLog instance",
+      "type": "string",
+      "defaultValue": "New Company"
+    },
+    {
+      "name": "ANYLOG_SERVER_PORT",
+      "label": "TCP port for node-to-node communication",
+      "type": "int",
+      "defaultValue": "32548"
+    },
+    {
+      "name": "ANYLOG_REST_PORT",
+      "label": "REST API port",
+      "type": "int",
+      "defaultValue": "32549"
+    }
+  ],
+  "deployment": {
+    "services": {
+      "$SERVICE_NAME": {
+        "image": "$DOCKER_IMAGE_BASE:$DOCKER_IMAGE_VERSION",
+        "network": "host",
+        "privileged": true,
+        "binds": [
+          "edgelake-anylog:/app/EdgeLake/anylog",
+          "edgelake-blockchain:/app/EdgeLake/blockchain",
+          "edgelake-data:/app/EdgeLake/data",
+          "edgelake-local-scripts:/app/deployment-scripts"
+        ]
+      }
+    }
+  }
+}
