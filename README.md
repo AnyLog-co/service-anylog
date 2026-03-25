@@ -1,65 +1,196 @@
-# EdgeLake Service for  OpenHorizon
+# AnyLog Service for OpenHorizon
 
-EdgeLake is a decentralized network to manage IoT/Edges data. Nodes are compute instances that execute the EdgeLake 
-Software and that are part of a nodes network.
+AnyLog is a decentralized network to manage IoT/Edge data. Nodes are compute instances that execute the AnyLog
+software and are part of a nodes network.
 
-The EdgeLake network is using one MASTER Node (is has all the network meta data), as many OPERATOR nodes as required (this is where the data is) and at least one QUERY node (this is where a query for the data is made, nodes can be dual role Query+Operator). The Query node is where the end-user (human or application, Grafana to build a dashboard for example) queries data, it knows from the meta data which Operators to goto and does it peer to peer.
+The AnyLog network uses one **Master** node (holds all network metadata), as many **Operator** nodes as required
+(where data is stored), and at least one **Query** node (where queries are made — nodes can be dual-role
+Query+Operator). The Query node knows from the metadata which Operators to contact and queries them peer-to-peer.
 
-note: the Master node can also be replaced by a Blockchain service & contract : we will not cover this below for the time being
+> **Note:** The Master node can also be replaced by a Blockchain service & contract — not covered here.
 
-Adding EdgeLake to Open Horizon implementations extends OH value it allows :
-- collection of nodes health simply
-- extending data queried to other sensors: data usefull to the user (machine rpms for example)
+Adding AnyLog to Open Horizon deployments extends OH value by:
+- Simple collection of node health data
+- Extending queried data to other sensors useful to the user (e.g. machine RPMs)
 
+---
 
-In a typical Open Horizon deployment here are the main elements: 
-<img width="1118" alt="image" src="https://github.com/user-attachments/assets/7e1d9264-2ace-4450-ab5a-f1c97f5e7211">
+## Architecture
 
+In a typical Open Horizon deployment:
 
-Adding EdgeLake to an existing Open Horizon deployment, the simplest pattern is to locate the Master and Query nodes together 'centrally' with the OH Managenent Hub as below:
-<img width="1149" alt="image" src="https://github.com/user-attachments/assets/308e51d6-73ac-46c2-b3e7-9f1fc8df28a6">
+<img width="1118" alt="image" src="imgs/oh_typical_deployment.png">
 
-A more practical approach is to have the Query node (at least one) elsewhere as below (avoiding to move
-data to the Management Hub : Peer to Peer collection), and one can have as many Query nodes as needed:
-<img width="1159" alt="image" src="https://github.com/user-attachments/assets/d9ff937f-09fb-4309-96f2-f11241aaea21">
+The simplest pattern for adding AnyLog is to co-locate the Master and Query nodes with the OH Management Hub:
 
+<img width="1149" alt="image" src="imgs/oh_with_anylog_central.png">
 
-For demonstrating and testing on a single system we created deployment tools:
-- 2x .sh for the Management side (deploy Master, deploy Query)
-- 1x .sh for the Agent side (deploy Operator during Edge build and initial Agent installation)
-- 1x 1 Service Policy for Operator at Edge (deploy Operator into an already deployed Edge using the Horizon deployment tool)
+A more practical approach puts the Query node(s) elsewhere, avoiding moving data to the Management Hub (peer-to-peer
+collection). Multiple Query nodes are supported:
 
-Here is the simplified diagram when deploying on a single physical system: 
-<img width="1159" alt="image" src="https://github.com/user-attachments/assets/761645ad-3af5-49e2-bdf0-c6a3b6f21815">
+<img width="1159" alt="image" src="imgs/oh_with_anylog_distributed.png">
 
+For demonstrating and testing on a single physical system:
 
+<img width="1159" alt="image" src="imgs/oh_single_system.png">
 
-Back to deployment, with the instructions below you will be able to deploy an integrated OH+EL setup to run a simple dashboard.
-Creating a nodes network requires the following steps:
-1. Install the EdgeLake Software on one or more computer instances.
-2. Configure each installed node (compute instance) such that:
-   1. The node joins an exiting network (or creates a new network).
-   2. The node offers data management and monitoring services.  
+---
 
+## Repository Structure
 
+```
+anylog-service/
+├── Makefile
+├── service.definition.json        ← base template (never modified directly)
+├── service.policy.json            ← base template
+├── node.policy.json               ← base template
+└── docker-makefiles/
+    ├── env2json.sh                ← generates per-instance JSON policy files
+    ├── env2json.py                ← Python equivalent of env2json.sh
+    ├── prep_configs.sh
+    ├── build_docker_compose.sh
+    ├── docker-compose-files/
+    │   └── <ANYLOG_TYPE>-docker-compose.yaml
+    └── <ANYLOG_TYPE>/             ← one directory per node instance
+        ├── node_configs.env       ← user-edited configuration
+        ├── service.definition.json  ← generated by prep-service
+        ├── service.policy.json      ← generated by prep-service
+        └── node.policy.json         ← generated by prep-service
+```
 
-## Table of Content
-* [Install OpenHorizon](Documentation%2FInstall_Local_OpenHorizon.md)
-* [Deploy EdgeLake](deploy_edgelake_service.md)
-* [EdgeLake KubeArmor Integration](Documentation/EdgeLake_KubeArmor_integration.md) - Accepting KubeArmor data into EdgeLake
-* [Import Grafana Dashboards](Documentation/Import_Grafana_Dashboards.md) - Importing KubeArmor related gauges into Grafana 
+Each `<ANYLOG_TYPE>` directory is self-contained. Multiple instances (e.g. `anylog-generic`, `anylog-operator`,
+`anylog-master`) can coexist on the same machine without conflicts — every `prep-service` run writes its JSON
+files into its own subdirectory, using the `NODE_NAME` from that instance's `.env` as the service identity.
 
+---
 
-## 📌 Our valuable contributors👩‍💻👨‍💻
+## Prerequisites
+
+| Tool | Required for |
+|---|---|
+| `docker` or `podman` | All container operations |
+| `docker compose` / `docker-compose` / `podman-compose` | Docker compose targets |
+| `jq` | `prep-service` (JSON policy generation) |
+| `hzn` (Open Horizon CLI) | All `publish-*`, `agent-run`, `deploy-check` targets |
+
+The Makefile auto-detects `docker` vs `podman` and `docker compose` vs `docker-compose` vs `podman-compose`.
+`hzn` is optional — all Docker compose targets work without it.
+
+---
+
+## Configuration
+
+Each node type has its own directory under `docker-makefiles/` containing a `node_configs.env` file.
+The key variables read at make-time are:
+
+| Variable in `.env` | Purpose |
+|---|---|
+| `NODE_NAME` | Sets the container name and OpenHorizon service identity |
+| `IMAGE` | Docker image repo (e.g. `anylogco/anylog-network`) |
+
+All other variables are passed through to the container at runtime.
+
+### Makefile variables
+
+| Variable | Default | Description |
+|---|---|---|
+| `ANYLOG_TYPE` | *(required)* | Subdirectory name under `docker-makefiles/` |
+| `TAG` | `pre-develop` | Docker image tag |
+| `HZN_ORG_ID` | `myorg` | OpenHorizon organisation ID |
+| `SERVICE_VERSION` | `1.3.5` | OH service version |
+| `HZN_EXCHANGE_USER_AUTH` | *(required for publish)* | OH exchange credentials |
+
+---
+
+## Usage
+
+### Docker Compose
+
+```bash
+# Preview — generate docker-compose.yaml without starting
+make dry-run ANYLOG_TYPE=anylog-generic
+
+# Start
+make up ANYLOG_TYPE=anylog-generic TAG=latest
+
+# Stop
+make down ANYLOG_TYPE=anylog-generic
+
+# Stop and remove volumes
+make clean ANYLOG_TYPE=anylog-generic
+
+# Stop, remove volumes and image
+make clean-all ANYLOG_TYPE=anylog-generic
+
+# Logs
+make logs   ANYLOG_TYPE=anylog-generic
+make logs-f ANYLOG_TYPE=anylog-generic   # follow
+```
+
+### OpenHorizon
+
+```bash
+# Generate service.definition.json, service.policy.json and node.policy.json
+# into docker-makefiles/<ANYLOG_TYPE>/
+make prep-service ANYLOG_TYPE=anylog-generic TAG=latest
+
+# Publish service + policies, then register the agent (full workflow)
+make full-deploy ANYLOG_TYPE=anylog-generic TAG=latest
+
+# Publish only
+make publish ANYLOG_TYPE=anylog-generic
+
+# Register agent against already-published policies
+make deploy ANYLOG_TYPE=anylog-generic
+
+# Unregister agent
+make hzn-clean
+
+# Check agreement list
+make hzn-agreement-list
+
+# Validate deployment against all policy files
+make deploy-check ANYLOG_TYPE=anylog-generic
+```
+
+Multiple instances on the same machine — each with its own identity and policy files:
+
+```bash
+make prep-service ANYLOG_TYPE=anylog-master    TAG=latest
+make prep-service ANYLOG_TYPE=anylog-operator  TAG=pre-develop
+make prep-service ANYLOG_TYPE=anylog-query     TAG=latest
+```
+
+### Diagnostics
+
+```bash
+# Show all resolved variable values
+make check-vars ANYLOG_TYPE=anylog-generic
+
+# Attach to running container
+make attach ANYLOG_TYPE=anylog-generic
+
+# Open bash shell in container
+make exec ANYLOG_TYPE=anylog-generic
+```
+
+---
+
+## Table of Contents
+
+* [Install OpenHorizon](Documentation/Install_Local_OpenHorizon.md)
+* [Deploy AnyLog](deploy_anylog_service.md)
+* [AnyLog KubeArmor Integration](Documentation/AnyLog_KubeArmor_integration.md)
+* [Import Grafana Dashboards](Documentation/Import_Grafana_Dashboards.md)
+
+---
+
+## 📌 Our valuable contributors 👩‍💻👨‍💻
 
 <table>
   <tr>
-    <a href="https://github.com/open-horizon-services/service-edgelake/graphs/contributors">
-      <img src="https://contrib.rocks/image?repo=open-horizon-services/service-edgelake" />
+    <a href="https://github.com/open-horizon-services/service-anylog/graphs/contributors">
+      <img src="https://contrib.rocks/image?repo=open-horizon-services/service-anylog" />
     </a>
   </tr>
 </table>
-
-
-
-
