@@ -1,0 +1,629 @@
+{
+  "org": "$HZN_ORG_ID",
+  "label": "$SERVICE_NAME for $ARCH",
+  "description": "A service to deploy EdgeLake with Open Horizon",
+  "documentation": "https://edgelake.github.io/",
+  "url": "$SERVICE_NAME",
+  "version": "$SERVICE_VERSION",
+  "arch": "$ARCH",
+  "public": true,
+  "sharable": "singleton",
+  "requiredServices": [],
+  "userInput": [
+    {
+      "name": "INIT_TYPE",
+      "label": "Basic deployment settings Container image, deployment type -> prod: run AnyLog instance -> bash: run shell interface with AnyLog installed and params set",
+      "type": "string",
+      "value": "prod"
+    },
+    {
+      "name": "IMAGE",
+      "label": "AnyLog image",
+      "type": "string",
+      "value": "anylogco/anylog-network"
+    },
+    {
+      "name": "DEPLOYMENTS_REPO",
+      "label": "Github repo to use for configuring / deploying node",
+      "type": "string",
+      "value": "https://github.com/AnyLog-co/deployment-scripts"
+    },
+    {
+      "name": "DEPLOYMENTS_BRANCH",
+      "label": "Branch associated with git repo",
+      "type": "string",
+      "value": "pre-develop"
+    },
+    {
+      "name": "NODE_TYPE",
+      "label": "Core node configuration - required for all deployments Configuration based deploymnet node deployment type Node Types:   generic: sandbox with only network configured   master: \"blockchain\" emulator   operator: agent dedicated to storing data   query: agent dedicated to querying data (enable system_query logical database)   publisher: agent used to distribute data   master-operator: a combination of master and operator on a single agent   master-publisher: a combination of master and publisher on a single agent",
+      "type": "string",
+      "value": "master-operator"
+    },
+    {
+      "name": "NODE_NAME",
+      "label": "Name of the AnyLog instance",
+      "type": "string",
+      "value": "anylog-standalone-operator"
+    },
+    {
+      "name": "COMPANY_NAME",
+      "label": "Owner of the AnyLog instance",
+      "type": "string",
+      "value": "AnyLog Co."
+    },
+    {
+      "name": "ANYLOG_SERVER_PORT",
+      "label": "Port address used by AnyLog's TCP protocol to communicate with other nodes in the network",
+      "type": "int",
+      "value": 32148
+    },
+    {
+      "name": "ANYLOG_REST_PORT",
+      "label": "Port address used by AnyLog's REST protocol",
+      "type": "int",
+      "value": 32149
+    },
+    {
+      "name": "ANYLOG_BROKER_PORT",
+      "label": "Port value to be used as an MQTT broker, or some other third-party broker",
+      "type": "int",
+      "value": 32150
+    },
+    {
+      "name": "DB_TYPE",
+      "label": "Physical database type (sqlite, psql)",
+      "type": "string",
+      "value": "sqlite"
+    },
+    {
+      "name": "DB_IP",
+      "label": "Database IP address",
+      "type": "string",
+      "value": "127.0.0.1"
+    },
+    {
+      "name": "DB_PORT",
+      "label": "Database port number",
+      "type": "int",
+      "value": 5432
+    },
+    {
+      "name": "AUTOCOMMIT",
+      "label": "Whether to set autocommit data",
+      "type": "string",
+      "value": "true"
+    },
+    {
+      "name": "BLOBS_STORAGE",
+      "label": "Enable external blob storage",
+      "type": "string",
+      "value": "false"
+    },
+    {
+      "name": "BLOB_STORAGE_TYPE",
+      "label": "Storage backend type - Supported: mongo, s3, akave, minio",
+      "type": "string",
+      "value": "mongo"
+    },
+    {
+      "name": "BLOB_STORAGE_IP",
+      "label": "Storage endpoint (MongoDB or object storage endpoint)",
+      "type": "string",
+      "value": "127.0.0.1"
+    },
+    {
+      "name": "BLOB_STORAGE_PORT",
+      "label": "Storage port (used mainly for MongoDB)",
+      "type": "int",
+      "value": 27017
+    },
+    {
+      "name": "SYSTEM_QUERY",
+      "label": "Whether to start system_query logical database",
+      "type": "string",
+      "value": "true"
+    },
+    {
+      "name": "SYSTEM_QUERY_DB",
+      "label": "Database type used for system_query logical database",
+      "type": "string",
+      "value": "sqlite"
+    },
+    {
+      "name": "MEMORY",
+      "label": "Run system_query using in-memory SQLite. If set to false, will use pre-set database type",
+      "type": "string",
+      "value": "true"
+    },
+    {
+      "name": "LEDGER_CONN",
+      "label": "TCP connection information for Master Node",
+      "type": "string",
+      "value": "127.0.0.1:32148"
+    },
+    {
+      "name": "BLOCKCHAIN_SYNC",
+      "label": "How often to sync from blockchain",
+      "type": "string",
+      "value": "60 second"
+    },
+    {
+      "name": "BLOCKCHAIN_SOURCE",
+      "label": "Source of where the blockchain data is coming from (master, optimism)",
+      "type": "string",
+      "value": "master"
+    },
+    {
+      "name": "BLOCKCHAIN_DESTINATION",
+      "label": "Where the local copy of the blockchain will be stored",
+      "type": "string",
+      "value": "file"
+    },
+    {
+      "name": "CLUSTER_NAME",
+      "label": "Owner of the cluster",
+      "type": "string",
+      "value": "anylog-cluster1"
+    },
+    {
+      "name": "DEFAULT_DBMS",
+      "label": "Logical database name",
+      "type": "string",
+      "value": "mydb"
+    },
+    {
+      "name": "NODE_MONITORING",
+      "label": "Data ingestion protocols (MQTT, OPC-UA, video streaming, monitoring) Whether to monitor the node or not",
+      "type": "string",
+      "value": "true"
+    },
+    {
+      "name": "STORE_MONITORING",
+      "label": "Store monitoring in Operator node(s)",
+      "type": "string",
+      "value": "true"
+    },
+    {
+      "name": "SYSLOG_MONITORING",
+      "label": "Accept syslog data from local (Message broker required)",
+      "type": "string",
+      "value": "false"
+    },
+    {
+      "name": "DOCKER_MONITORING",
+      "label": "Docker Monitoring",
+      "type": "string",
+      "value": "true"
+    },
+    {
+      "name": "ENABLE_VIDEO_STREAMING",
+      "label": "Enable or disable video streaming. true = stream video, false = do not stream",
+      "type": "string",
+      "value": "true"
+    },
+    {
+      "name": "VIDEO_URL",
+      "label": "URL of the video to stream. Can be a YouTube link or other video source.",
+      "type": "string",
+      "value": "https://www.youtube.com/watch?v=rnXIjl_Rzy4"
+    },
+    {
+      "name": "VIDEO_PORT",
+      "label": "Port on which the video streaming server will run.",
+      "type": "int",
+      "value": 32800
+    },
+    {
+      "name": "VIDEO_NAME",
+      "label": "Name of the video stream or service identifier.",
+      "type": "string",
+      "value": "sfstream"
+    },
+    {
+      "name": "ENABLE_DETECTIONS",
+      "label": "Enable or disable object detections (like YOLO detections) on the video. true = enable detections, false = disable",
+      "type": "string",
+      "value": "false"
+    },
+    {
+      "name": "YOLO_MODEL_PORT",
+      "label": "Port on which the YOLO model server will run for object detection.",
+      "type": "int",
+      "value": 50051
+    },
+    {
+      "name": "ENABLE_MQTT",
+      "label": "Whether to enable the default MQTT process",
+      "type": "string",
+      "value": "true"
+    },
+    {
+      "name": "MQTT_BROKER",
+      "label": "IP address of MQTT broker",
+      "type": "string",
+      "value": "172.104.228.251"
+    },
+    {
+      "name": "MQTT_PORT",
+      "label": "Port associated with MQTT broker",
+      "type": "int",
+      "value": 1883
+    },
+    {
+      "name": "MQTT_LOG",
+      "label": "Whether to enable MQTT logging process",
+      "type": "string",
+      "value": "false"
+    },
+    {
+      "name": "MSG_TOPIC",
+      "label": "Topic to get data for",
+      "type": "string",
+      "value": "rand-data"
+    },
+    {
+      "name": "MSG_DBMS",
+      "label": "Logical database name",
+      "type": "string",
+      "value": "mydb"
+    },
+    {
+      "name": "MSG_TABLE",
+      "label": "Table where to store data",
+      "type": "string",
+      "value": "bring [table]"
+    },
+    {
+      "name": "MSG_TIMESTAMP_COLUMN",
+      "label": "Timestamp column name",
+      "type": "string",
+      "value": "bring [timestamp]"
+    },
+    {
+      "name": "MSG_VALUE_COLUMN",
+      "label": "Value column name",
+      "type": "string",
+      "value": "bring [value]"
+    },
+    {
+      "name": "MSG_VALUE_COLUMN_TYPE",
+      "label": "Column value type",
+      "type": "string",
+      "value": "float"
+    },
+    {
+      "name": "ENABLE_OPCUA",
+      "label": "Whether or not to enable to OPC-UA service",
+      "type": "string",
+      "value": "false"
+    },
+    {
+      "name": "OPCUA_URL",
+      "label": "OPC-UA URL address (ex. opcua.tcp:;//127.0.0.1:4840)",
+      "type": "string",
+      "value": ""
+    },
+    {
+      "name": "OPCUA_NODE",
+      "label": "Node information the root is located in (ex. ns=2;s=DataSet)",
+      "type": "string",
+      "value": ""
+    },
+    {
+      "name": "OPCUA_FREQUENCY",
+      "label": "How often to pull data from OPC-UA",
+      "type": "int",
+      "value": 5
+    },
+    {
+      "name": "ANYLOG_PATH",
+      "label": "Fine-tuning for experienced users - safe to leave as defaults AnyLog Root Path",
+      "type": "string",
+      "value": "/app"
+    },
+    {
+      "name": "LOCAL_SCRIPTS",
+      "label": "!local_scripts: ${ANYLOG_HOME}/deployment-scripts/scripts",
+      "type": "string",
+      "value": "/app/deployment-scripts"
+    },
+    {
+      "name": "TEST_DIR",
+      "label": "!test_dir: ${ANYLOG_HOME}/deployment-scripts/test",
+      "type": "string",
+      "value": "/app/deployment-scripts/test"
+    },
+    {
+      "name": "IS_HIDDEN",
+      "label": "hide blockchain policy - supports all node types except cluster / operator",
+      "type": "string",
+      "value": "false"
+    },
+    {
+      "name": "DEPLOY_LOCAL_SCRIPT",
+      "label": "Whether to automatically run a local (or personalized) script at the end of the process",
+      "type": "string",
+      "value": "false"
+    },
+    {
+      "name": "LOCATION",
+      "label": "Coordinates of the machine - used by Grafana to map the network",
+      "type": "string",
+      "value": ""
+    },
+    {
+      "name": "COUNTRY",
+      "label": "Country where machine is located",
+      "type": "string",
+      "value": ""
+    },
+    {
+      "name": "STATE",
+      "label": "State where machine is located",
+      "type": "string",
+      "value": ""
+    },
+    {
+      "name": "CITY",
+      "label": "City where machine is located",
+      "type": "string",
+      "value": ""
+    },
+    {
+      "name": "CONFIG_NAME",
+      "label": "Declare Policy name",
+      "type": "string",
+      "value": ""
+    },
+    {
+      "name": "ENABLE_DNS",
+      "label": "Whether to enable DNS resolution",
+      "type": "string",
+      "value": "false"
+    },
+    {
+      "name": "NIC_TYPE",
+      "label": "NIC type used to resolve the internal IP address (ex. eth0, lo)",
+      "type": "string",
+      "value": ""
+    },
+    {
+      "name": "OVERLAY_IP",
+      "label": "Overlay IP address - if set, will replace local IP address when connecting to network",
+      "type": "string",
+      "value": ""
+    },
+    {
+      "name": "EXTERNAL_DNS",
+      "label": "External DNS resolution",
+      "type": "string",
+      "value": ""
+    },
+    {
+      "name": "DNS_DOMAIN",
+      "label": "local DNS domain to append to hostname (ex. example.com)",
+      "type": "string",
+      "value": ""
+    },
+    {
+      "name": "DNS",
+      "label": "Full path for machine's (local) DNS",
+      "type": "string",
+      "value": ""
+    },
+    {
+      "name": "TCP_BIND",
+      "label": "Bind settings - a true value binds to a specific IP and Port (a false value binds to all IPs)",
+      "type": "string",
+      "value": "true"
+    },
+    {
+      "name": "BROKER_BIND",
+      "label": "Number of concurrent threads per connection protocol",
+      "type": "string",
+      "value": "false"
+    },
+    {
+      "name": "BROKER_THREADS",
+      "label": "Timeout in seconds for REST requests (0 = continuous)",
+      "type": "int",
+      "value": 6
+    },
+    {
+      "name": "REST_TIMEOUT",
+      "label": "Reuse identical blobs using file hash",
+      "type": "int",
+      "value": 30
+    },
+    {
+      "name": "BLOBS_REUSE",
+      "label": "Compress blobs before storage",
+      "type": "string",
+      "value": "true"
+    },
+    {
+      "name": "BLOBS_COMPRESS",
+      "label": "Folder for storing blobs locally",
+      "type": "string",
+      "value": "true"
+    },
+    {
+      "name": "BLOBS_FOLDER",
+      "label": "Leave empty to use default application path",
+      "type": "string",
+      "value": ""
+    },
+    {
+      "name": "BUCKET_GROUP",
+      "label": "Logical bucket grouping",
+      "type": "string",
+      "value": ""
+    },
+    {
+      "name": "BUCKET_ID",
+      "label": "Bucket identifier",
+      "type": "string",
+      "value": ""
+    },
+    {
+      "name": "BUCKET_REGION",
+      "label": "Cloud region",
+      "type": "string",
+      "value": ""
+    },
+    {
+      "name": "MEMBER",
+      "label": "Operator ID - autogenerated INT if not specified This is used to help keep a record of where data was originally stored",
+      "type": "string",
+      "value": ""
+    },
+    {
+      "name": "ENABLE_HA",
+      "label": "Whether of not to enable HA against the cluster",
+      "type": "string",
+      "value": "false"
+    },
+    {
+      "name": "START_DATE",
+      "label": "How many days back to sync between nodes",
+      "type": "int",
+      "value": 30
+    },
+    {
+      "name": "OPERATOR_THREADS",
+      "label": "How many threads to use in the operator process",
+      "type": "int",
+      "value": 3
+    },
+    {
+      "name": "COMPRESS_FILE",
+      "label": "Compress JSON and SQL file(s) backup",
+      "type": "string",
+      "value": "true"
+    },
+    {
+      "name": "WRITE_IMMEDIATE",
+      "label": "When data comes in write to database immediately, as opposed to waiting for a full buffer",
+      "type": "string",
+      "value": "true"
+    },
+    {
+      "name": "THRESHOLD_TIME",
+      "label": "If buffer is not full, how long to wait until pushing data through",
+      "type": "string",
+      "value": "60 seconds"
+    },
+    {
+      "name": "THRESHOLD_VOLUME",
+      "label": "Buffer size to reach, at which point data is pushed through",
+      "type": "string",
+      "value": "10KB"
+    },
+    {
+      "name": "QUERY_POOL",
+      "label": "Number of parallel queries",
+      "type": "int",
+      "value": 6
+    },
+    {
+      "name": "LICENSE_KEY",
+      "label": "Sensitive credentials - do not commit to version control will be updated to use sercets logic for both docker and k8s AnyLog License Key",
+      "type": "string",
+      "value": "cd554412f2a4ff540e3426a4f1fcb6d50ab8d9e1130e42957b0338ea45f4303fd160a551c5200b0321101abdc9eb44169e1b1c9d5a9492b16cc870619bb5199ae806a1dfadda93e00f02d30f3a5dabc0a6a7bb8f869e37fa565962eba55cb335397a66903d8fb3014ae1e4eea46c104cad8c787a0d5ae45efbf8728cf04cb805{\"company”:”Guest”,”expiration”:”2026-08-01”,”type”:”beta”}"
+    },
+    {
+      "name": "DB_USER",
+      "label": "Username for SQL database connection",
+      "type": "string",
+      "value": "admin"
+    },
+    {
+      "name": "DB_PASSWD",
+      "label": "Password correlated to database user",
+      "type": "string",
+      "value": "passwd"
+    },
+    {
+      "name": "BLOB_STORAGE_USER",
+      "label": "Optional DB authentication",
+      "type": "string",
+      "value": "admin"
+    },
+    {
+      "name": "BLOB_STORAGE_PASSWORD",
+      "label": "User associated with MQTT broker",
+      "type": "string",
+      "value": "passwd"
+    },
+    {
+      "name": "MQTT_USER",
+      "label": "Password associated with MQTT user",
+      "type": "string",
+      "value": "anyloguser"
+    },
+    {
+      "name": "MQTT_PASSWD",
+      "label": "Access credentials",
+      "type": "string",
+      "value": "mqtt4AnyLog!"
+    },
+    {
+      "name": "BUCKET_SECRET_KEY",
+      "label": "Companion UI application - deployed alongside the AnyLog node",
+      "type": "string",
+      "value": ""
+    },
+    {
+      "name": "ENABLE_REMOTE_GUI",
+      "label": "Whether to enable Remote-GUI in deployment",
+      "type": "string",
+      "value": "true"
+    },
+    {
+      "name": "REMOTE_GUI_TAG",
+      "label": "Remote-GUI version Tag",
+      "type": "string",
+      "value": "beta2"
+    },
+    {
+      "name": "REMOTE_GUI_NIC",
+      "label": "NIC type to use for Remote-GUI - if not set, uses 127.0.0.1",
+      "type": "string",
+      "value": ""
+    },
+    {
+      "name": "REMOTE_GUI_FE",
+      "label": "Remote GUI Frontend Port",
+      "type": "int",
+      "value": 31800
+    },
+    {
+      "name": "REMOTE_GUI_BE",
+      "label": "Remote GUI Backend Port",
+      "type": "int",
+      "value": 8080
+    },
+    {
+      "name": "GRAFANA_URL",
+      "label": "Grafana PATH to reference for Grafana connection",
+      "type": "string",
+      "value": ""
+    }
+  ],
+  "deployment": {
+    "services": {
+      "$SERVICE_NAME": {
+        "image": "anylogco/anylog-network:pre-develop",
+        "network": "host",
+        "privileged": true,
+        "binds": [
+          "edgelake-anylog:/app/EdgeLake/anylog",
+          "edgelake-blockchain:/app/EdgeLake/blockchain",
+          "edgelake-data:/app/EdgeLake/data",
+          "edgelake-local-scripts:/app/deployment-scripts"
+        ]
+      }
+    }
+  }
+}
