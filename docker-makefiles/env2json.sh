@@ -226,11 +226,18 @@ echo "✓  node.policy.json        → '${OUTPUT_NODE_POLICY}'"
 #    userInput entries, wrap in deployment policy envelope, set constraints,
 #    and sync serviceVersions[0].version from service.definition.json
 # --------------------------------------------------------------------------- #
+
+# --------------------------------------------------------------------------- #
+# 4. Update service.deployment.json — build inputs from service.definition.json
+#    userInput entries, wrap in deployment policy envelope, set constraints,
+#    and sync serviceVersions[0].version from service.definition.json
+# --------------------------------------------------------------------------- #
 svc_def_version="$(jq -r '.version // empty' "${ROOT_DIR}/service.definition.json")"
 
 tmp="$(mktemp)"
 jq --argjson inputs "$user_input_json" \
    --arg node_name "$node_name" \
+   --arg version "${svc_def_version:-}" \
    '
    .constraints = ["purpose == \($node_name)", "openhorizon.allowPrivileged == true"] |
    .userInput[0].inputs = $inputs |
