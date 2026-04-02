@@ -159,6 +159,8 @@ make prep-service ANYLOG_TYPE=anylog-operator  TAG=pre-develop
 make prep-service ANYLOG_TYPE=anylog-query     TAG=latest
 ```
 
+Set new policy on Open Horizon node
+
 ```bash
 export SERVICE_VERSION=1.1
 make publish ANYLOG_TYPE=anylog-standalone-operator
