@@ -128,6 +128,9 @@ make logs-f ANYLOG_TYPE=anylog-generic   # follow
 ### OpenHorizon
 
 ```bash
+# set service version
+export SERVICE_VERSION=1.1
+
 # Generate service.definition.json, service.policy.json and node.policy.json
 # into docker-makefiles/<ANYLOG_TYPE>/
 make prep-service ANYLOG_TYPE=anylog-generic TAG=latest
@@ -162,7 +165,6 @@ make prep-service ANYLOG_TYPE=anylog-query     TAG=latest
 Set new policy on Open Horizon node
 
 ```bash
-export SERVICE_VERSION=1.1
 hzn unregister
 hzn register -n nodename -f docker-makefiles/node-type/node.policy.json
 ```
