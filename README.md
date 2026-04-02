@@ -103,7 +103,7 @@ All other variables are passed through to the container at runtime.
 ## Usage
 
 ### Docker Compose
-
+set license key in the appropriate version of node_configs.env file.  
 ```bash
 # Preview — generate docker-compose.yaml without starting
 make dry-run ANYLOG_TYPE=anylog-generic
@@ -157,6 +157,13 @@ Multiple instances on the same machine — each with its own identity and policy
 make prep-service ANYLOG_TYPE=anylog-master    TAG=latest
 make prep-service ANYLOG_TYPE=anylog-operator  TAG=pre-develop
 make prep-service ANYLOG_TYPE=anylog-query     TAG=latest
+```
+
+```bash
+export SERVICE_VERSION=1.1
+make publish ANYLOG_TYPE=anylog-standalone-operator
+hzn unregister
+hzn register -n nodename -f docker-makefiles/node-type/node.policy.json
 ```
 
 ### Diagnostics
