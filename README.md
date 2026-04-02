@@ -163,7 +163,6 @@ Set new policy on Open Horizon node
 
 ```bash
 export SERVICE_VERSION=1.1
-make publish ANYLOG_TYPE=anylog-standalone-operator
 hzn unregister
 hzn register -n nodename -f docker-makefiles/node-type/node.policy.json
 ```
