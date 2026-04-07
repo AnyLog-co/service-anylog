@@ -2,7 +2,7 @@
 $(info LOADING MAKEFILE)
 
 # Default values
-export ANYLOG_TYPE ?=
+export ANYLOG_TYPE ?= anylog-generic
 export TAG         ?= pre-develop
 
 # OpenHorizon configs
@@ -37,8 +37,8 @@ ifneq ($(strip $(ANYLOG_TYPE)),)
     export IMAGE        ?= $(shell grep -m1 '^IMAGE='     "$(_SINGLE_FILE)" | cut -d= -f2- | tr -d '"\r')
     export NODE_NAME    := $(shell grep -m1 '^NODE_NAME=' "$(_SINGLE_FILE)" | cut -d= -f2- | tr -d '"\r')
     export SERVICE_NAME ?= $(NODE_NAME)
-else
-    $(error Missing configuration file(s) for $(ANYLOG_TYPE))
+# else
+#     $(error Missing configuration file(s) for $(ANYLOG_TYPE))
 endif
 
 export CONTAINER_CMD      := $(shell command -v podman >/dev/null 2>&1 && echo "podman" || echo "docker")
@@ -57,6 +57,7 @@ all: help
 check-configs:
 	@if [ "$(IS_MANUAL)" != "true" ] && [ -z "$(ANYLOG_TYPE)" ]; then \
 		echo "ERROR: Missing AnyLog type"; \
+		$(MAKE) help; \
 		exit 1; \
 	elif [ "$(IS_MANUAL)" != "true" ] && [ ! -d docker-makefiles/$(ANYLOG_TYPE) ]; then \
 		echo "ERROR: Missing directory for ANYLOG_TYPE=$(ANYLOG_TYPE)"; \
