@@ -1,21 +1,4 @@
 services:
-  remote-gui:
-    image: anylogco/remote-gui:beta2
-    container_name: remote-gui
-    restart: always
-    stdin_open: true
-    tty: true
-    ports:
-      - 31800:31800
-      - 8080:8080
-    environment:
-      - VITE_API_URL=http://127.0.0.1:8080
-      - REMOTE_GUI_FE=31800
-      - REMOTE_GUI_BE=8080
-    volumes:
-      - image-vol:/app/CLI/local-cli-backend/static/
-      - usr-mgm-vol:/app/CLI/local-cli/backend/usr-mgm/
-      - report-configs:/app/CLI/local-cli-backend/plugins/reportgenerator/templates
   anylog-standalone-operator-init:
     image: busybox
     user: root
@@ -30,14 +13,12 @@ services:
       "
     ]
     volumes:
-      - image-vol:/app/CLI/local-cli-backend/static/
-      - usr-mgm-vol:/app/CLI/local-cli/backend/usr-mgm/
       - anylog-standalone-operator-anylog:/app/AnyLog-Network/anylog
       - anylog-standalone-operator-blockchain:/app/AnyLog-Network/blockchain
       - anylog-standalone-operator-data:/app/AnyLog-Network/data
       - anylog-standalone-operator-local-scripts:/app/deployment-scripts
   anylog-standalone-operator:
-    image: anylogco/anylog-network:pre-develop
+    image: anylogco/anylog-network:1.4.2603-152c10
     user: "anylog:anylog"
     platform: linux/amd64
     restart: always
@@ -61,6 +42,3 @@ volumes:
   anylog-standalone-operator-blockchain:
   anylog-standalone-operator-data:
   anylog-standalone-operator-local-scripts:
-  image-vol:
-  usr-mgm-vol:
-  report-configs:

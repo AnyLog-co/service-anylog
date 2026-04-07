@@ -124,13 +124,13 @@ prep-service: check-configs ## generate service.definition.json, service.policy.
 	@echo "Open Horizon Dry Run $(ANYLOG_TYPE) - $(NODE_NAME)"
 	bash ./docker-makefiles/env2json.sh $(POLICY_DIR) . $(TAG)
 
-full-deploy: publish-service publish-service-policy publish-deployment-policy agent-run ## deploy all services and policies, then start agent
+full-deploy: prep-service publish-service publish-service-policy publish-deployment-policy agent-run ## deploy all services and policies, then start agent
 
-deploy: publish-deployment-policy agent-run ## publish deployment and run agent
+deploy: prep-service publish-deployment-policy agent-run ## publish deployment and run agent
 
-publish: publish-service publish-service-policy publish-deployment-policy ## publish services and policies
+publish: prep-service publish-service publish-service-policy publish-deployment-policy ## publish services and policies
 
-publish-version: publish-service publish-service-policy ## update version
+publish-version: prep-service publish-service publish-service-policy ## update version
 
 publish-service: ## publish service
 	@echo "=================="
