@@ -108,7 +108,7 @@ exec: check-configs ## attach to bash shell
 #========= Open Horizon commands =========
 prep-service: check-configs ## generate service.definition.json, service.policy.json and node.policy.json
 	@echo "Open Horizon Dry Run $(ANYLOG_TYPE) - $(NODE_NAME)"
-	bash  ./docker-makefiles/env2json.sh $(POLICY_DIR) . $(TAG)
+	bash -x ./docker-makefiles/env2json.sh $(POLICY_DIR) . $(TAG)
 
 full-deploy: publish-service publish-service-policy publish-deployment-policy agent-run ## deploy all services and policies, then start agent
 
