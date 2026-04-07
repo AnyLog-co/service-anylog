@@ -102,7 +102,7 @@ All other variables are passed through to the container at runtime.
 ## Usage
 
 ### Docker Compose
-
+set license key in the appropriate version of node_configs.env file.  
 ```bash
 # Preview — generate docker-compose.yaml without starting
 make dry-run ANYLOG_TYPE=anylog-generic
@@ -127,6 +127,9 @@ make logs-f ANYLOG_TYPE=anylog-generic   # follow
 ### OpenHorizon
 
 ```bash
+# set service version
+export SERVICE_VERSION=1.1
+
 # Generate service.definition.json, service.policy.json and node.policy.json
 # into docker-makefiles/<ANYLOG_TYPE>/
 make prep-service ANYLOG_TYPE=anylog-generic TAG=latest
@@ -156,6 +159,13 @@ Multiple instances on the same machine — each with its own identity and policy
 make prep-service ANYLOG_TYPE=anylog-master    TAG=latest
 make prep-service ANYLOG_TYPE=anylog-operator  TAG=pre-develop
 make prep-service ANYLOG_TYPE=anylog-query     TAG=latest
+```
+
+Set new policy on Open Horizon node
+
+```bash
+hzn unregister
+hzn register -n nodename -f docker-makefiles/node-type/node.policy.json
 ```
 
 ### Diagnostics
