@@ -106,9 +106,23 @@ exec: check-configs ## attach to bash shell
 	$(CONTAINER_CMD) exec -it $(NODE_NAME) /bin/bash
 
 #========= Open Horizon commands =========
+# TODO: Remove prep-build target once AnyLog releases use the proper Open Horizon
+#       version format (#.#.####). At that point, pass TAG directly to full-deploy.
+prep-build: check-configs ## [TEMPORARY] pull image under original TAG, retag to OH-compatible format, and push
+	$(eval OH_VERSION := 1.0.$(shell date +%Y%m%d))
+	@echo "Pulling $(IMAGE):$(TAG)..."
+	$(CONTAINER_CMD) pull docker.io/$(IMAGE):$(TAG)
+	@echo "Retagging → $(IMAGE):$(OH_VERSION)"
+	$(CONTAINER_CMD) tag docker.io/$(IMAGE):$(TAG) docker.io/$(IMAGE):$(OH_VERSION)
+	@echo "Pushing $(IMAGE):$(OH_VERSION)..."
+	$(CONTAINER_CMD) push docker.io/$(IMAGE):$(OH_VERSION)
+	@echo ""
+	@echo "Image ready. Now run:"
+	@echo "  make full-deploy ANYLOG_TYPE=$(ANYLOG_TYPE) TAG=$(OH_VERSION)"
+
 prep-service: check-configs ## generate service.definition.json, service.policy.json and node.policy.json
 	@echo "Open Horizon Dry Run $(ANYLOG_TYPE) - $(NODE_NAME)"
-	bash  ./docker-makefiles/env2json.sh $(POLICY_DIR) . $(TAG)
+	bash ./docker-makefiles/env2json.sh $(POLICY_DIR) . $(TAG)
 
 full-deploy: publish-service publish-service-policy publish-deployment-policy agent-run ## deploy all services and policies, then start agent
 

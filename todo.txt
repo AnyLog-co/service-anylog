@@ -1,0 +1,5 @@
+1. secrets
+    a. AnyLog is a private docker image, need to integrate docker login support
+    b. for LICENSE + other credentials (this needs to be done w/ generic anylog as well)
+2. Remote-GUI support -- users have an option to deploy a Remote GUI as part of the AnyLog instance
+3. improve README

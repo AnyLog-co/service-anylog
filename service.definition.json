@@ -48,10 +48,10 @@
         "network": "host",
         "privileged": true,
         "binds": [
-          "edgelake-anylog:/app/EdgeLake/anylog",
-          "edgelake-blockchain:/app/EdgeLake/blockchain",
-          "edgelake-data:/app/EdgeLake/data",
-          "edgelake-local-scripts:/app/deployment-scripts"
+          "${NODE_NAME}-anylog:/app/AnyLog-Network/anylog",
+          "${NODE_NAME}-blockchain:/app/AnyLog-Network/blockchain",
+          "${NODE_NAME}-data:/app/AnyLog-Network/data",
+          "${NODE_NAME}-local-scripts:/app/deployment-scripts"
         ]
       }
     }

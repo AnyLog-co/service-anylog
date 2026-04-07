@@ -3,6 +3,5 @@ See the information about <a href="https://lf-edge.atlassian.net/wiki/spaces/OH/
 | Name |	GitHub |	Email |
 | :---: | :---: | :---: | 
 | Ori Shadmon | oshadmon | ori@anylog.co / oshadmon@gmail.com |
-| Mark Davidson | mdavidson58 | mark@anylog.co / mdavidson58@msn.com |
 
 
