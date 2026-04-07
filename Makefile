@@ -106,9 +106,12 @@ exec: check-configs ## attach to bash shell
 	$(CONTAINER_CMD) exec -it $(NODE_NAME) /bin/bash
 
 #========= Open Horizon commands =========
+prep-build: pull ## convert image TAG to supported format - 1.0.0 (this will be replaced soon)
+    @echo "Updating tag $(IMAGE):$(TAG) -> $(IMAGE):1.0.0"
+    docker tag $(IMAGE):$(TAG) $(IMAGE):1.0.0
 prep-service: check-configs ## generate service.definition.json, service.policy.json and node.policy.json
 	@echo "Open Horizon Dry Run $(ANYLOG_TYPE) - $(NODE_NAME)"
-	bash -x ./docker-makefiles/env2json.sh $(POLICY_DIR) . $(TAG)
+	bash ./docker-makefiles/env2json.sh $(POLICY_DIR) . $(TAG)
 
 full-deploy: publish-service publish-service-policy publish-deployment-policy agent-run ## deploy all services and policies, then start agent
 
