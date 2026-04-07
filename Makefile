@@ -8,7 +8,7 @@ export TAG         ?= pre-develop
 # OpenHorizon configs
 export HZN_ORG_ID      ?= myorg
 export HZN_LISTEN_IP   ?= 127.0.0.1
-export SERVICE_VERSION ?= 1.3.5
+export SERVICE_VERSION ?= $(TAG)
 export TEST_CONN       ?=
 
 # Detect OS / architecture
@@ -108,7 +108,7 @@ exec: check-configs ## attach to bash shell
 #========= Open Horizon commands =========
 prep-service: check-configs ## generate service.definition.json, service.policy.json and node.policy.json
 	@echo "Open Horizon Dry Run $(ANYLOG_TYPE) - $(NODE_NAME)"
-	bash ./docker-makefiles/env2json.sh $(POLICY_DIR) . $(TAG)
+	bash  ./docker-makefiles/env2json.sh $(POLICY_DIR) . $(TAG)
 
 full-deploy: publish-service publish-service-policy publish-deployment-policy agent-run ## deploy all services and policies, then start agent
 
