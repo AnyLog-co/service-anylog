@@ -32,7 +32,7 @@
 #   TAG       = pre-develop
 # =============================================================================
 
-#set -euo pipefail
+set -euo pipefail
 
 INPUT_DIR="${1:-anylog-generic}"
 ROOT_DIR="${2:-.}"
