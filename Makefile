@@ -56,7 +56,7 @@ export POLICY_DIR := docker-makefiles/$(ANYLOG_TYPE)
 # -----------------
 ifeq ($(strip $(TEST_CONN)), )
     ANYLOG_REST_PORT    = $(shell grep -m1 '^ANYLOG_REST_PORT=' "$(_SINGLE_FILE)" | cut -d= -f2- | tr -d '"\r')
-    NODE_IP             = $(shell $(CONTAINER_CMD) inspect -f '{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}' $(NODE_NAME) 2>/dev/null | grep -v '^$$' || echo "127.0.0.1" )
+    NODE_IP          = $(or 127.0.0.1,$(shell $(CONTAINER_CMD) inspect -f '{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}' $(NODE_NAME) 2>/dev/null | grep -v '^$$'),127.0.0.1)
     export TEST_CONN    := "$(NODE_IP):$(ANYLOG_REST_PORT)"
 endif
 
@@ -229,18 +229,21 @@ deploy-check: ## check deployment
 full-test: test-status test-node test-network ## Execute a full "test suite" validating AnyLog is active and communicating
 
 test-status:  ## execute `get status` against AnyLog node
+	@echo "Check Status: $(TEST_CONN)"
 	@curl -X POST http://$(TEST_CONN) \
         -H "Content-Type: application/json" \
         -d '{"command": "get status where format=json", "User-Agent": "AnyLog/1.23"}' \
         -w "\n"
 
 test-node:  ## execute `test node` against AnyLog node
+	@echo "Test node: $(TEST_CONN)"
 	@curl -X POST http://$(TEST_CONN) \
         -H "Content-Type: application/json" \
         -d '{"command": "test node", "User-Agent": "AnyLog/1.23"}' \
         -w "\n"
 
 test-network:  ## execute `test network` against AnyLog node
+	@echo "Test Network: $(TEST_CONN)"
 	@curl -X POST http://$(TEST_CONN) \
         -H "Content-Type: application/json" \
         -d '{"command": "test network", "User-Agent": "AnyLog/1.23"}' \
