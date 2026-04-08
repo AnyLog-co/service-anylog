@@ -163,18 +163,30 @@ agent-run: ## start agent
 	@hzn register --name=hzn-client --policy=$(POLICY_DIR)/node.policy.json
 	@watch $(MAKE) hzn-agreement-list
 
-hzn-clean: ## unregister agent(s) from OpenHorizon
+
+
+hzn-clean-all: ## remove everything associated with the service through open horizon
 	@echo "==================="
 	@echo "UN-REGISTERING NODE"
 	@echo "==================="
 	@hzn unregister -f
 	@echo ""
 
+hzn-status: hzn-agreement-list hzn-event-list hzn-logs ## get a full summary of the logs
 hzn-agreement-list: ## check agreement list
 	@hzn agreement list
 
-hzn-logs: ## logs for Docker container when running in OpenHorizon
-	@$(CONTAINER_CMD) logs $(CONTAINER_ID)
+hzn-event-list: ## list event logs
+	@echo "==========="
+	@echo " EVENT LOG"
+	@echo "==========="
+    @hzn eventlog list
+
+hzn-logs: ## view service logs
+	@echo "========="
+	@echo "SERVICE LOG"
+	@echo "========="
+    @hzn service log -f $(SERVICE_NAME)
 
 deploy-check: ## check deployment
 	@hzn deploycheck all -t device \
