@@ -45,6 +45,7 @@
     "services": {
       "$SERVICE_NAME": {
         "image": "$DOCKER_IMAGE_BASE:$DOCKER_IMAGE_VERSION",
+        "user": "10001:10001",
         "network": "host",
         "privileged": true,
         "binds": [
