@@ -38,7 +38,6 @@ ifneq ($(strip $(ANYLOG_TYPE)),)
 
     export IMAGE            ?= $(shell grep -m1 '^IMAGE='     "$(_SINGLE_FILE)" | cut -d= -f2- | tr -d '"\r')
     export NODE_NAME        := $(shell grep -m1 '^NODE_NAME=' "$(_SINGLE_FILE)" | cut -d= -f2- | tr -d '"\r')
-
     export SERVICE_NAME ?= $(NODE_NAME)
 endif
 
@@ -55,9 +54,10 @@ export POLICY_DIR := docker-makefiles/$(ANYLOG_TYPE)
 # -----------------
 # Prep for Testing
 # -----------------
-ifeq ($(strip $(TEST_CONN),)
-    NODE_IP = $(shell $(CONTAINER_CMD) inspect -f '{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}' $(NODE_NAME) 2>/dev/null | grep -v '^$$' || echo "127.0.0.1" )
-    export TEST_CONN := "$(NODE_IP):$(ANYLOG_REST_PORT)"
+ifeq ($(strip $(TEST_CONN)), )
+    ANYLOG_REST_PORT    = $(shell grep -m1 '^ANYLOG_REST_PORT=' "$(_SINGLE_FILE)" | cut -d= -f2- | tr -d '"\r')
+    NODE_IP             = $(shell $(CONTAINER_CMD) inspect -f '{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}' $(NODE_NAME) 2>/dev/null | grep -v '^$$' || echo "127.0.0.1" )
+    export TEST_CONN    := "$(NODE_IP):$(ANYLOG_REST_PORT)"
 endif
 
 #========= prep configs =========
@@ -228,25 +228,20 @@ deploy-check: ## check deployment
 #========= testing =========
 full-test: test-status test-node test-network ## Execute a full "test suite" validating AnyLog is active and communicating
 
-test-prep: check-configs ## resolve REST endpoint if TEST_CONN not provided
-	$(eval ANYLOG_REST_PORT := $(shell grep -m1 '^ANYLOG_REST_PORT=' "$(_SINGLE_FILE)" | cut -d= -f2- | tr -d '"\r'))
-	$(eval NODE_IP := $(shell $(CONTAINER_CMD) inspect -f '{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}' $(NODE_NAME) 2>/dev/null | grep -v '^$$' || echo "127.0.0.1"))
-	$(eval TEST_CONN := $(if $(TEST_CONN),$(TEST_CONN),$(NODE_IP)))
-
-test-status: test-prep ## execute `get status` against AnyLog node
-    @curl -X POST http://$(TEST_CONN) \
+test-status:  ## execute `get status` against AnyLog node
+	@curl -X POST http://$(TEST_CONN) \
         -H "Content-Type: application/json" \
         -d '{"command": "get status where format=json", "User-Agent": "AnyLog/1.23"}' \
         -w "\n"
 
-test-node: test-prep ## execute `test node` against AnyLog node
-    @curl -X POST http://$(TEST_CONN) \
+test-node:  ## execute `test node` against AnyLog node
+	@curl -X POST http://$(TEST_CONN) \
         -H "Content-Type: application/json" \
         -d '{"command": "test node", "User-Agent": "AnyLog/1.23"}' \
         -w "\n"
 
-test-network: test-prep ## execute `test network` against AnyLog node
-    @curl -X POST http://$(TEST_CONN) \
+test-network:  ## execute `test network` against AnyLog node
+	@curl -X POST http://$(TEST_CONN) \
         -H "Content-Type: application/json" \
         -d '{"command": "test network", "User-Agent": "AnyLog/1.23"}' \
         -w "\n"
