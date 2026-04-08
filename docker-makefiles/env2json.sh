@@ -191,6 +191,16 @@ jq --argjson ui "$user_input_json" \
    '.userInput = $ui | .deployment.services["$SERVICE_NAME"].image = $image' \
    "${ROOT_DIR}/service.definition.json" > "$tmp"
 cp "$tmp" "$OUTPUT_SERVICE_DEFINITION"
+jq --arg node_name "$node_name" \
+   '.deployment.services["$SERVICE_NAME"].binds = [
+      ($node_name + "-anylog:/app/AnyLog-Network/anylog"),
+      ($node_name + "-blockchain:/app/AnyLog-Network/blockchain"),
+      ($node_name + "-data:/app/AnyLog-Network/data")
+   ]' \
+   "$OUTPUT_SERVICE_DEFINITION" > "$tmp"
+cp "$tmp" "$OUTPUT_SERVICE_DEFINITION"
+
+
 echo "✓  service.definition.json → '${OUTPUT_SERVICE_DEFINITION}'"
 
 # --------------------------------------------------------------------------- #
