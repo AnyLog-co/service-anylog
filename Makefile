@@ -163,9 +163,29 @@ agent-run: ## start agent
 	@hzn register --name=hzn-client --policy=$(POLICY_DIR)/node.policy.json
 	@watch $(MAKE) hzn-agreement-list
 
+hzn-clean-all: unregister-agent remove-deployment-policy remove-service-policy remove-service ## unregister node, remove all policies/service, and wipe image+volumes
+remove-service: ## remove service from hzn exchange
+	@echo "=================="
+	@echo "REMOVING SERVICE"
+	@echo "=================="
+	@hzn exchange service remove -f $(HZN_ORG_ID)/$(SERVICE_NAME)_$(SERVICE_VERSION)_$(ARCH)
+	@echo ""
 
+remove-service-policy: ## remove service policy from hzn exchange
+	@echo "======================="
+	@echo "REMOVING SERVICE POLICY"
+	@echo "======================="
+	@hzn exchange service removepolicy -f $(HZN_ORG_ID)/$(SERVICE_NAME)_$(SERVICE_VERSION)_$(ARCH)
+	@echo ""
 
-hzn-clean-all: ## remove everything associated with the service through open horizon
+remove-deployment-policy: ## remove deployment policy from hzn exchange
+	@echo "=========================="
+	@echo "REMOVING DEPLOYMENT POLICY"
+	@echo "=========================="
+	@hzn exchange deployment removepolicy -f $(HZN_ORG_ID)/policy-$(SERVICE_NAME)_$(SERVICE_VERSION)
+	@echo ""
+
+unregister-agent: ## unregister agent(s) from OpenHorizon
 	@echo "==================="
 	@echo "UN-REGISTERING NODE"
 	@echo "==================="
