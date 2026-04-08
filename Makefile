@@ -17,6 +17,7 @@ export UNAME_M := $(shell uname -m)
 export ANYLOG_UID := $(shell id -u)
 export ANYLOG_GID := $(shell id -g)
 
+
 ifeq ($(UNAME_M),x86_64)
 	export DOCKER_PLATFORM := linux/amd64
 else ifneq (,$(filter $(UNAME_M),aarch64 arm64))
@@ -34,11 +35,11 @@ export ARCH := $(shell command -v hzn >/dev/null 2>&1 && hzn architecture || \
 # -------------------
 ifneq ($(strip $(ANYLOG_TYPE)),)
     _SINGLE_FILE := docker-makefiles/$(ANYLOG_TYPE)/node_configs.env
-    export IMAGE        ?= $(shell grep -m1 '^IMAGE='     "$(_SINGLE_FILE)" | cut -d= -f2- | tr -d '"\r')
-    export NODE_NAME    := $(shell grep -m1 '^NODE_NAME=' "$(_SINGLE_FILE)" | cut -d= -f2- | tr -d '"\r')
+
+    export IMAGE            ?= $(shell grep -m1 '^IMAGE='     "$(_SINGLE_FILE)" | cut -d= -f2- | tr -d '"\r')
+    export NODE_NAME        := $(shell grep -m1 '^NODE_NAME=' "$(_SINGLE_FILE)" | cut -d= -f2- | tr -d '"\r')
+
     export SERVICE_NAME ?= $(NODE_NAME)
-# else
-#     $(error Missing configuration file(s) for $(ANYLOG_TYPE))
 endif
 
 export CONTAINER_CMD      := $(shell command -v podman >/dev/null 2>&1 && echo "podman" || echo "docker")
@@ -50,6 +51,14 @@ export DOCKER_COMPOSE_FILE := docker-makefiles/docker-compose-files/$(ANYLOG_TYP
 
 # Generated policy files live alongside the .env, inside docker-makefiles/$(ANYLOG_TYPE)/
 export POLICY_DIR := docker-makefiles/$(ANYLOG_TYPE)
+
+# -----------------
+# Prep for Testing
+# -----------------
+ifeq ($(strip $(TEST_CONN),)
+    NODE_IP = $(shell $(CONTAINER_CMD) inspect -f '{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}' $(NODE_NAME) 2>/dev/null | grep -v '^$$' || echo "127.0.0.1" )
+    export TEST_CONN := "$(NODE_IP):$(ANYLOG_REST_PORT)"
+endif
 
 #========= prep configs =========
 all: help
@@ -164,6 +173,7 @@ agent-run: ## start agent
 	@watch $(MAKE) hzn-agreement-list
 
 hzn-clean-all: unregister-agent remove-deployment-policy remove-service-policy remove-service ## unregister node, remove all policies/service, and wipe image+volumes
+
 remove-service: ## remove service from hzn exchange
 	@echo "=================="
 	@echo "REMOVING SERVICE"
@@ -200,13 +210,13 @@ hzn-event-list: ## list event logs
 	@echo "==========="
 	@echo " EVENT LOG"
 	@echo "==========="
-    @hzn eventlog list
+	@hzn eventlog list
 
 hzn-logs: ## view service logs
 	@echo "========="
 	@echo "SERVICE LOG"
 	@echo "========="
-    @hzn service log -f $(SERVICE_NAME)
+	@hzn service log -f $(SERVICE_NAME)
 
 deploy-check: ## check deployment
 	@hzn deploycheck all -t device \
@@ -216,21 +226,31 @@ deploy-check: ## check deployment
 		--node-pol=$(POLICY_DIR)/node.policy.json
 
 #========= testing =========
-# test-node: check-configs ## test a node via REST interface
-# ifeq ($(TEST_CONN),)
-# 	@echo "ERROR: Missing connection information (TEST_CONN)"
-# 	@exit 1
-# endif
-# 	@echo "Test Node against $(TEST_CONN)"
-# 	@curl -X GET http://$(TEST_CONN) -H "command: test node" -H "User-Agent: AnyLog/1.23" -w "\n"
-#
-# test-network: check-configs ## test the network via REST interface
-# ifeq ($(TEST_CONN),)
-# 	@echo "ERROR: Missing connection information (TEST_CONN)"
-# 	@exit 1
-# endif
-# 	@echo "Test Network against $(TEST_CONN)"
-# 	@curl -X GET http://$(TEST_CONN) -H "command: test network" -H "User-Agent: AnyLog/1.23" -w "\n"
+full-test: test-status test-node test-network ## Execute a full "test suite" validating AnyLog is active and communicating
+
+test-prep: check-configs ## resolve REST endpoint if TEST_CONN not provided
+	$(eval ANYLOG_REST_PORT := $(shell grep -m1 '^ANYLOG_REST_PORT=' "$(_SINGLE_FILE)" | cut -d= -f2- | tr -d '"\r'))
+	$(eval NODE_IP := $(shell $(CONTAINER_CMD) inspect -f '{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}' $(NODE_NAME) 2>/dev/null | grep -v '^$$' || echo "127.0.0.1"))
+	$(eval TEST_CONN := $(if $(TEST_CONN),$(TEST_CONN),$(NODE_IP)))
+
+test-status: test-prep ## execute `get status` against AnyLog node
+    @curl -X POST http://$(TEST_CONN) \
+        -H "Content-Type: application/json" \
+        -d '{"command": "get status where format=json", "User-Agent": "AnyLog/1.23"}' \
+        -w "\n"
+
+test-node: test-prep ## execute `test node` against AnyLog node
+    @curl -X POST http://$(TEST_CONN) \
+        -H "Content-Type: application/json" \
+        -d '{"command": "test node", "User-Agent": "AnyLog/1.23"}' \
+        -w "\n"
+
+test-network: test-prep ## execute `test network` against AnyLog node
+    @curl -X POST http://$(TEST_CONN) \
+        -H "Content-Type: application/json" \
+        -d '{"command": "test network", "User-Agent": "AnyLog/1.23"}' \
+        -w "\n"
+
 
 #========= validate & help =========
 check-vars: ## show all environment variable values
