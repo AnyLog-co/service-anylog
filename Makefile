@@ -233,21 +233,28 @@ test-status:  ## execute `get status` against AnyLog node
 	@curl -X POST http://$(TEST_CONN) \
         -H "Content-Type: application/json" \
         -d '{"command": "get status where format=json", "User-Agent": "AnyLog/1.23"}' \
-        -w "\n"
+        -w "\n\n"
 
 test-node:  ## execute `test node` against AnyLog node
 	@echo "Test node: $(TEST_CONN)"
 	@curl -X POST http://$(TEST_CONN) \
         -H "Content-Type: application/json" \
         -d '{"command": "test node", "User-Agent": "AnyLog/1.23"}' \
-        -w "\n"
+        -w "\n\n"
 
 test-network:  ## execute `test network` against AnyLog node
 	@echo "Test Network: $(TEST_CONN)"
 	@curl -X POST http://$(TEST_CONN) \
         -H "Content-Type: application/json" \
         -d '{"command": "test network", "User-Agent": "AnyLog/1.23"}' \
-        -w "\n"
+        -w "\n\n"
+
+check-processes: ## execute `get processes` against AnyLog node
+	@echo "View Active / Inactive Services for: $(TEST_CONN)"
+	@curl -X POST http://$(TEST_CONN) \
+        -H "Content-Type: application/json" \
+        -d '{"command": "get processes", "User-Agent": "AnyLog/1.23"}' \
+        -w "\n\n"
 
 
 #========= validate & help =========
