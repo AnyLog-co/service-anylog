@@ -17,7 +17,7 @@ Adding AnyLog to Open Horizon deployments extends OH value by:
 
 ## Architecture
 
-In a typical Open Horizon deployment here are the main elements: 
+In a typical Open Horizon deployment here are the main elements:
 <img width="1118" alt="image" src="imgs/oh_typical_deployment.png">
 
 The simplest pattern for adding AnyLog is to co-locate the Master and Query nodes with the OH Management Hub:
@@ -28,8 +28,7 @@ collection). Multiple Query nodes are supported:
 <img width="1159" alt="image" src="imgs/oh_with_anylog_distributed.png">
 
 For demonstrating and testing on a single physical system:
-<img width="1159" alt="image" src="imgs/oh_single_system.png ">
-
+<img width="1159" alt="image" src="imgs/oh_single_system.png">
 
 ---
 
@@ -99,11 +98,54 @@ All other variables are passed through to the container at runtime.
 
 ---
 
+## Volumes
+
+Each AnyLog node uses three named Docker volumes, scoped to the `NODE_NAME` set in `node_configs.env`:
+
+| Volume | Mount path | Purpose |
+|---|---|---|
+| `${NODE_NAME}-anylog` | `/app/AnyLog-Network/anylog` | AnyLog runtime state — active processes, in-flight data, and internal configuration generated at startup |
+| `${NODE_NAME}-blockchain` | `/app/AnyLog-Network/blockchain` | Local copy of the blockchain/metadata ledger, synced from the Master node on a schedule |
+| `${NODE_NAME}-data` | `/app/AnyLog-Network/data` | Persistent operator data — the actual time-series records stored by the node |
+
+### Deployment scripts: Open Horizon vs Docker Compose
+
+With plain Docker Compose you can bind-mount a local clone of the
+[AnyLog deployment-scripts](https://github.com/AnyLog-co/deployment-scripts) repo directly into the container.
+Open Horizon does not support this pattern cleanly for two reasons:
+
+1. **Container lifecycle is managed by the Horizon agent** — you don't control when mounts occur relative to any
+   init steps, so a bind-mount to a locally cloned repo can race or fail silently.
+2. **Services start independently** — an init container approach (e.g. BusyBox cloning the repo before the main
+   container starts) is unreliable because the Horizon agent may start the main service before the repo clone
+   finishes, or the cloned path may be hidden once the volume mount lands.
+
+**Recommended approach:** fork [https://github.com/AnyLog-co/deployment-scripts](https://github.com/AnyLog-co/deployment-scripts)
+and point AnyLog at your fork via `node_configs.env`:
+
+```dotenv
+# Github repo to use for configuring / deploying node
+DEPLOYMENTS_REPO="https://github.com/<your-org>/deployment-scripts"
+
+# Branch associated with git repo
+DEPLOYMENTS_BRANCH="main"
+```
+
+The node pulls the repo at startup, so any configuration changes are applied on the next container restart
+without re-publishing the OH service.
+
+---
+
 ## Usage
 
 ### Docker Compose
-set license key in the appropriate version of node_configs.env file.  
+
+Set `LICENSE_KEY` in the appropriate `node_configs.env` before running.
+
 ```bash
+# Pull image from Docker Hub
+make pull ANYLOG_TYPE=anylog-generic
+
 # Preview — generate docker-compose.yaml without starting
 make dry-run ANYLOG_TYPE=anylog-generic
 
@@ -127,7 +169,7 @@ make logs-f ANYLOG_TYPE=anylog-generic   # follow
 ### OpenHorizon
 
 ```bash
-# set service version
+# Set service version
 export SERVICE_VERSION=1.1
 
 # Generate service.definition.json, service.policy.json and node.policy.json
@@ -137,11 +179,14 @@ make prep-service ANYLOG_TYPE=anylog-generic TAG=latest
 # Publish service + policies, then register the agent (full workflow)
 make full-deploy ANYLOG_TYPE=anylog-generic TAG=latest
 
-# Publish only
+# Publish services and policies only (no agent registration)
 make publish ANYLOG_TYPE=anylog-generic
 
 # Register agent against already-published policies
 make deploy ANYLOG_TYPE=anylog-generic
+
+# Start agent only (after policies are already published)
+make agent-run ANYLOG_TYPE=anylog-generic
 
 # Unregister agent
 make hzn-clean
@@ -149,8 +194,20 @@ make hzn-clean
 # Check agreement list
 make hzn-agreement-list
 
+# View logs for container running under Open Horizon
+make hzn-logs ANYLOG_TYPE=anylog-generic
+
 # Validate deployment against all policy files
 make deploy-check ANYLOG_TYPE=anylog-generic
+```
+
+Granular publish targets (useful when iterating on a single policy):
+
+```bash
+make publish-service         ANYLOG_TYPE=anylog-generic   # publish service definition
+make publish-service-policy  ANYLOG_TYPE=anylog-generic   # publish service policy
+make publish-deployment-policy ANYLOG_TYPE=anylog-generic # publish deployment policy
+make publish-version         ANYLOG_TYPE=anylog-generic   # update version only
 ```
 
 Multiple instances on the same machine — each with its own identity and policy files:
@@ -161,11 +218,11 @@ make prep-service ANYLOG_TYPE=anylog-operator  TAG=pre-develop
 make prep-service ANYLOG_TYPE=anylog-query     TAG=latest
 ```
 
-Set new policy on Open Horizon node
+Update the policy on an already-registered Open Horizon node:
 
 ```bash
 hzn unregister
-hzn register -n nodename -f docker-makefiles/node-type/node.policy.json
+hzn register -n nodename -f docker-makefiles/<ANYLOG_TYPE>/node.policy.json
 ```
 
 ### Diagnostics
@@ -174,21 +231,12 @@ hzn register -n nodename -f docker-makefiles/node-type/node.policy.json
 # Show all resolved variable values
 make check-vars ANYLOG_TYPE=anylog-generic
 
-# Attach to running container
+# Attach to running container (interactive AnyLog CLI)
 make attach ANYLOG_TYPE=anylog-generic
 
 # Open bash shell in container
 make exec ANYLOG_TYPE=anylog-generic
 ```
-
----
-
-## Table of Contents
-
-* [Install OpenHorizon](Documentation/Install_Local_OpenHorizon.md)
-* [Deploy AnyLog](deploy_anylog_service.md)
-* [AnyLog KubeArmor Integration](Documentation/AnyLog_KubeArmor_integration.md)
-* [Import Grafana Dashboards](Documentation/Import_Grafana_Dashboards.md)
 
 ---
 
