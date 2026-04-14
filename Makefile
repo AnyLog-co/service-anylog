@@ -2,7 +2,7 @@
 $(info LOADING MAKEFILE)
 
 # Default values
-export ANYLOG_TYPE ?=
+export ANYLOG_TYPE ?= anylog-generic
 export TAG         ?= pre-develop
 
 # OpenHorizon configs
@@ -16,6 +16,7 @@ export OS      := $(shell uname -s)
 export UNAME_M := $(shell uname -m)
 export ANYLOG_UID := $(shell id -u)
 export ANYLOG_GID := $(shell id -g)
+
 
 ifeq ($(UNAME_M),x86_64)
 	export DOCKER_PLATFORM := linux/amd64
@@ -34,11 +35,10 @@ export ARCH := $(shell command -v hzn >/dev/null 2>&1 && hzn architecture || \
 # -------------------
 ifneq ($(strip $(ANYLOG_TYPE)),)
     _SINGLE_FILE := docker-makefiles/$(ANYLOG_TYPE)/node_configs.env
-    export IMAGE        ?= $(shell grep -m1 '^IMAGE='     "$(_SINGLE_FILE)" | cut -d= -f2- | tr -d '"\r')
-    export NODE_NAME    := $(shell grep -m1 '^NODE_NAME=' "$(_SINGLE_FILE)" | cut -d= -f2- | tr -d '"\r')
+
+    export IMAGE            ?= $(shell grep -m1 '^IMAGE='     "$(_SINGLE_FILE)" | cut -d= -f2- | tr -d '"\r')
+    export NODE_NAME        := $(shell grep -m1 '^NODE_NAME=' "$(_SINGLE_FILE)" | cut -d= -f2- | tr -d '"\r')
     export SERVICE_NAME ?= $(NODE_NAME)
-else
-    $(error Missing configuration file(s) for $(ANYLOG_TYPE))
 endif
 
 export CONTAINER_CMD      := $(shell command -v podman >/dev/null 2>&1 && echo "podman" || echo "docker")
@@ -51,12 +51,22 @@ export DOCKER_COMPOSE_FILE := docker-makefiles/docker-compose-files/$(ANYLOG_TYP
 # Generated policy files live alongside the .env, inside docker-makefiles/$(ANYLOG_TYPE)/
 export POLICY_DIR := docker-makefiles/$(ANYLOG_TYPE)
 
+# -----------------
+# Prep for Testing
+# -----------------
+ifeq ($(strip $(TEST_CONN)), )
+    ANYLOG_REST_PORT    = $(shell grep -m1 '^ANYLOG_REST_PORT=' "$(_SINGLE_FILE)" | cut -d= -f2- | tr -d '"\r')
+    NODE_IP          = $(or 127.0.0.1,$(shell $(CONTAINER_CMD) inspect -f '{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}' $(NODE_NAME) 2>/dev/null | grep -v '^$$'),127.0.0.1)
+    export TEST_CONN    := "$(NODE_IP):$(ANYLOG_REST_PORT)"
+endif
+
 #========= prep configs =========
 all: help
 
 check-configs:
 	@if [ "$(IS_MANUAL)" != "true" ] && [ -z "$(ANYLOG_TYPE)" ]; then \
 		echo "ERROR: Missing AnyLog type"; \
+		$(MAKE) help; \
 		exit 1; \
 	elif [ "$(IS_MANUAL)" != "true" ] && [ ! -d docker-makefiles/$(ANYLOG_TYPE) ]; then \
 		echo "ERROR: Missing directory for ANYLOG_TYPE=$(ANYLOG_TYPE)"; \
@@ -124,13 +134,13 @@ prep-service: check-configs ## generate service.definition.json, service.policy.
 	@echo "Open Horizon Dry Run $(ANYLOG_TYPE) - $(NODE_NAME)"
 	bash ./docker-makefiles/env2json.sh $(POLICY_DIR) . $(TAG)
 
-full-deploy: publish-service publish-service-policy publish-deployment-policy agent-run ## deploy all services and policies, then start agent
+full-deploy: prep-service publish-service publish-service-policy publish-deployment-policy agent-run ## deploy all services and policies, then start agent
 
-deploy: publish-deployment-policy agent-run ## publish deployment and run agent
+deploy: prep-service publish-deployment-policy agent-run ## publish deployment and run agent
 
-publish: publish-service publish-service-policy publish-deployment-policy ## publish services and policies
+publish: prep-service publish-service publish-service-policy publish-deployment-policy ## publish services and policies
 
-publish-version: publish-service publish-service-policy ## update version
+publish-version: prep-service publish-service publish-service-policy ## update version
 
 publish-service: ## publish service
 	@echo "=================="
@@ -162,18 +172,51 @@ agent-run: ## start agent
 	@hzn register --name=hzn-client --policy=$(POLICY_DIR)/node.policy.json
 	@watch $(MAKE) hzn-agreement-list
 
-hzn-clean: ## unregister agent(s) from OpenHorizon
+hzn-clean-all: unregister-agent remove-deployment-policy remove-service-policy remove-service ## unregister node, remove all policies/service, and wipe image+volumes
+
+remove-service: ## remove service from hzn exchange
+	@echo "=================="
+	@echo "REMOVING SERVICE"
+	@echo "=================="
+	@hzn exchange service remove -f $(HZN_ORG_ID)/$(SERVICE_NAME)_$(SERVICE_VERSION)_$(ARCH)
+	@echo ""
+
+remove-service-policy: ## remove service policy from hzn exchange
+	@echo "======================="
+	@echo "REMOVING SERVICE POLICY"
+	@echo "======================="
+	@hzn exchange service removepolicy -f $(HZN_ORG_ID)/$(SERVICE_NAME)_$(SERVICE_VERSION)_$(ARCH)
+	@echo ""
+
+remove-deployment-policy: ## remove deployment policy from hzn exchange
+	@echo "=========================="
+	@echo "REMOVING DEPLOYMENT POLICY"
+	@echo "=========================="
+	@hzn exchange deployment removepolicy -f $(HZN_ORG_ID)/policy-$(SERVICE_NAME)_$(SERVICE_VERSION)
+	@echo ""
+
+unregister-agent: ## unregister agent(s) from OpenHorizon
 	@echo "==================="
 	@echo "UN-REGISTERING NODE"
 	@echo "==================="
 	@hzn unregister -f
 	@echo ""
 
+hzn-status: hzn-agreement-list hzn-event-list hzn-logs ## get a full summary of the logs
 hzn-agreement-list: ## check agreement list
 	@hzn agreement list
 
-hzn-logs: ## logs for Docker container when running in OpenHorizon
-	@$(CONTAINER_CMD) logs $(CONTAINER_ID)
+hzn-event-list: ## list event logs
+	@echo "==========="
+	@echo " EVENT LOG"
+	@echo "==========="
+	@hzn eventlog list
+
+hzn-logs: ## view service logs
+	@echo "========="
+	@echo "SERVICE LOG"
+	@echo "========="
+	@hzn service log -f $(SERVICE_NAME)
 
 deploy-check: ## check deployment
 	@hzn deploycheck all -t device \
@@ -183,21 +226,36 @@ deploy-check: ## check deployment
 		--node-pol=$(POLICY_DIR)/node.policy.json
 
 #========= testing =========
-# test-node: check-configs ## test a node via REST interface
-# ifeq ($(TEST_CONN),)
-# 	@echo "ERROR: Missing connection information (TEST_CONN)"
-# 	@exit 1
-# endif
-# 	@echo "Test Node against $(TEST_CONN)"
-# 	@curl -X GET http://$(TEST_CONN) -H "command: test node" -H "User-Agent: AnyLog/1.23" -w "\n"
-#
-# test-network: check-configs ## test the network via REST interface
-# ifeq ($(TEST_CONN),)
-# 	@echo "ERROR: Missing connection information (TEST_CONN)"
-# 	@exit 1
-# endif
-# 	@echo "Test Network against $(TEST_CONN)"
-# 	@curl -X GET http://$(TEST_CONN) -H "command: test network" -H "User-Agent: AnyLog/1.23" -w "\n"
+full-test: test-status test-node test-network ## Execute a full "test suite" validating AnyLog is active and communicating
+
+test-status:  ## execute `get status` against AnyLog node
+	@echo "Check Status: $(TEST_CONN)"
+	@curl -X POST http://$(TEST_CONN) \
+        -H "Content-Type: application/json" \
+        -d '{"command": "get status where format=json", "User-Agent": "AnyLog/1.23"}' \
+        -w "\n\n"
+
+test-node:  ## execute `test node` against AnyLog node
+	@echo "Test node: $(TEST_CONN)"
+	@curl -X POST http://$(TEST_CONN) \
+        -H "Content-Type: application/json" \
+        -d '{"command": "test node", "User-Agent": "AnyLog/1.23"}' \
+        -w "\n\n"
+
+test-network:  ## execute `test network` against AnyLog node
+	@echo "Test Network: $(TEST_CONN)"
+	@curl -X POST http://$(TEST_CONN) \
+        -H "Content-Type: application/json" \
+        -d '{"command": "test network", "User-Agent": "AnyLog/1.23"}' \
+        -w "\n\n"
+
+check-processes: ## execute `get processes` against AnyLog node
+	@echo "View Active / Inactive Services for: $(TEST_CONN)"
+	@curl -X POST http://$(TEST_CONN) \
+        -H "Content-Type: application/json" \
+        -d '{"command": "get processes", "User-Agent": "AnyLog/1.23"}' \
+        -w "\n\n"
+
 
 #========= validate & help =========
 check-vars: ## show all environment variable values
