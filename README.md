@@ -37,6 +37,7 @@ For demonstrating and testing on a single physical system:
 ```
 anylog-service/
 ├── Makefile
+├── deploy.sh                      ← docker lifecycle engine (can be run standalone, without make)
 ├── service.definition.json        ← base template (never modified directly)
 ├── service.policy.json            ← base template
 ├── node.policy.json               ← base template
@@ -45,6 +46,7 @@ anylog-service/
     ├── env2json.py                ← Python equivalent of env2json.sh
     ├── prep_configs.sh
     ├── build_docker_compose.sh
+    ├── clean_configs.sh
     ├── docker-compose-files/
     │   └── <ANYLOG_TYPE>-docker-compose.yaml
     └── <ANYLOG_TYPE>/             ← one directory per node instance
@@ -90,10 +92,16 @@ All other variables are passed through to the container at runtime.
 
 | Variable | Default | Description |
 |---|---|---|
-| `ANYLOG_TYPE` | *(required)* | Subdirectory name under `docker-makefiles/` |
-| `TAG` | `pre-develop` | Docker image tag |
+| `ANYLOG_TYPE` | `anylog-generic` | Subdirectory name under `docker-makefiles/`. Short forms (`generic`, `master`, `operator`, `query`, `publisher`, `standalone-operator`, `standalone-publisher`) are auto-resolved to `anylog-<type>` |
+| `TAG` | `2.0.2606` | Docker image tag |
+| `IMAGE` | `anylogco/anylog-network` | Docker image repo |
+| `IS_MANUAL` | `false` | Use `docker run` instead of `docker compose` for the docker-lifecycle targets |
+| `LICENSE_KEY` | *(none)* | AnyLog license key. If not set, `license-check` (run automatically by `up` and `prep-service`) prompts for it and writes it into `node_configs.env` |
+| `PROMPT_LICENSE` | `true` | Whether to prompt for a license key when one isn't already saved |
+| `TEST_CONN` | auto-resolved from `node_configs.env` | REST endpoint (`ip:port`) used by `test-status`/`test-node`/`test-network`/`check-processes` |
 | `HZN_ORG_ID` | `myorg` | OpenHorizon organisation ID |
-| `SERVICE_VERSION` | `1.3.5` | OH service version |
+| `HZN_LISTEN_IP` | `127.0.0.1` | OpenHorizon listen IP |
+| `SERVICE_VERSION` | same as `TAG` | OH service version |
 | `HZN_EXCHANGE_USER_AUTH` | *(required for publish)* | OH exchange credentials |
 
 ---
@@ -140,7 +148,10 @@ without re-publishing the OH service.
 
 ### Docker Compose
 
-Set `LICENSE_KEY` in the appropriate `node_configs.env` before running.
+`LICENSE_KEY` doesn't need to be set manually — if it's missing from `node_configs.env`, `make up` prompts for
+it (interactively, via `/dev/tty`) and writes it back into the file so future runs skip the prompt. Pass
+`--license-key` non-interactively (e.g. in CI) via `LICENSE_KEY=... make up ...`, or set `PROMPT_LICENSE=false`
+to fail fast instead of prompting.
 
 ```bash
 # Pull image from Docker Hub
@@ -149,7 +160,7 @@ make pull ANYLOG_TYPE=anylog-generic
 # Preview — generate docker-compose.yaml without starting
 make dry-run ANYLOG_TYPE=anylog-generic
 
-# Start
+# Start (prompts for LICENSE_KEY on first run if not already set)
 make up ANYLOG_TYPE=anylog-generic TAG=latest
 
 # Stop
@@ -164,6 +175,39 @@ make clean-all ANYLOG_TYPE=anylog-generic
 # Logs
 make logs   ANYLOG_TYPE=anylog-generic
 make logs-f ANYLOG_TYPE=anylog-generic   # follow
+
+# Attach to running container (interactive AnyLog CLI)
+make attach ANYLOG_TYPE=anylog-generic
+
+# Open bash shell in container (anylog user, or root)
+make exec      ANYLOG_TYPE=anylog-generic
+make exec-root ANYLOG_TYPE=anylog-generic
+```
+
+Use `IS_MANUAL=true` to fall back to a plain `docker run` instead of `docker compose` (useful when a compose
+file isn't wanted, e.g. constrained environments):
+
+```bash
+make up ANYLOG_TYPE=anylog-generic IS_MANUAL=true
+```
+
+### Testing
+
+```bash
+# Run get-status + test-node + test-network in sequence
+make full-test ANYLOG_TYPE=anylog-generic
+
+make test-status      ANYLOG_TYPE=anylog-generic   # `get status where format=json`
+make test-node        ANYLOG_TYPE=anylog-generic   # `test node`
+make test-network     ANYLOG_TYPE=anylog-generic   # `test network`
+make check-processes  ANYLOG_TYPE=anylog-generic   # `get processes`
+```
+
+`TEST_CONN` is auto-resolved from the node's `ANYLOG_REST_PORT` in `node_configs.env` (falling back to
+`127.0.0.1:<port>`) — override it directly if testing against a remote node:
+
+```bash
+make full-test TEST_CONN=192.168.1.10:32149
 ```
 
 ### OpenHorizon
@@ -172,8 +216,9 @@ make logs-f ANYLOG_TYPE=anylog-generic   # follow
 # Set service version
 export SERVICE_VERSION=1.1
 
-# Generate service.definition.json, service.policy.json and node.policy.json
+# Generate service.definition.json, service.policy.json, service.deployment.json and node.policy.json
 # into docker-makefiles/<ANYLOG_TYPE>/
+# (also resolves LICENSE_KEY first — prompts and saves it into node_configs.env if missing)
 make prep-service ANYLOG_TYPE=anylog-generic TAG=latest
 
 # Publish service + policies, then register the agent (full workflow)
@@ -188,8 +233,8 @@ make deploy ANYLOG_TYPE=anylog-generic
 # Start agent only (after policies are already published)
 make agent-run ANYLOG_TYPE=anylog-generic
 
-# Unregister agent
-make hzn-clean
+# Unregister agent, remove all policies/service, and wipe image+volumes
+make hzn-clean-all ANYLOG_TYPE=anylog-generic
 
 # Check agreement list
 make hzn-agreement-list
@@ -199,6 +244,39 @@ make hzn-logs ANYLOG_TYPE=anylog-generic
 
 # Validate deployment against all policy files
 make deploy-check ANYLOG_TYPE=anylog-generic
+```
+
+If you only need to resolve/update the license key without generating anything else:
+
+```bash
+make license-check ANYLOG_TYPE=anylog-generic
+```
+
+Granular teardown targets (useful when only part of a deployment needs to be undone):
+
+```bash
+make unregister-agent            # unregister agent from OpenHorizon
+make remove-service            ANYLOG_TYPE=anylog-generic  # remove service from hzn exchange
+make remove-service-policy      ANYLOG_TYPE=anylog-generic  # remove service policy
+make remove-deployment-policy   ANYLOG_TYPE=anylog-generic  # remove deployment policy
+```
+
+Diagnostics for a registered node:
+
+```bash
+make hzn-status           # agreement list + event log + service log, in sequence
+make hzn-agreement-list   # check agreement list
+make hzn-event-list       # list event logs
+make hzn-logs ANYLOG_TYPE=anylog-generic   # view service logs
+```
+
+`prep-build` is a temporary bridge target — AnyLog's current release tags aren't in the `#.#.####` format
+Open Horizon expects, so this pulls the image under its normal `TAG`, retags it to a valid OH version string,
+and pushes that instead:
+
+```bash
+make prep-build ANYLOG_TYPE=anylog-generic TAG=pre-develop
+# then: make full-deploy ANYLOG_TYPE=anylog-generic TAG=<printed OH_VERSION>
 ```
 
 Granular publish targets (useful when iterating on a single policy):
@@ -228,7 +306,7 @@ hzn register -n nodename -f docker-makefiles/<ANYLOG_TYPE>/node.policy.json
 ### Diagnostics
 
 ```bash
-# Show all resolved variable values
+# Show all resolved variable values (docker + Open Horizon)
 make check-vars ANYLOG_TYPE=anylog-generic
 
 # Attach to running container (interactive AnyLog CLI)
@@ -236,6 +314,14 @@ make attach ANYLOG_TYPE=anylog-generic
 
 # Open bash shell in container
 make exec ANYLOG_TYPE=anylog-generic
+```
+
+All docker-lifecycle targets can also be run without `make`, directly via `deploy.sh`:
+
+```bash
+bash deploy.sh up --type operator --tag latest
+bash deploy.sh check-vars --type query
+bash deploy.sh help
 ```
 
 ---
