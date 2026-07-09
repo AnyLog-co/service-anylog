@@ -3,7 +3,7 @@ $(info LOADING MAKEFILE)
 
 # Default values
 export ANYLOG_TYPE ?= anylog-generic
-export TAG         ?= pre-develop
+export TAG         ?= 2.0.2606
 
 # OpenHorizon configs
 export HZN_ORG_ID      ?= myorg
